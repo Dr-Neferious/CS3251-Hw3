@@ -10,22 +10,28 @@
 #include <exception>
 #include <string>
 #include <vector>
+#include <thread>
+#include <mutex>
 
 class RxPSocket
 {
 public:
+    RxPSocket(RxPSocket &&sock);
+
     static RxPSocket connect(int foreign_port, int local_port = -1);
 
     static RxPSocket listen(int local_port);
 
-    int recv(void* buffer, int buffer_length);
+    int recv(char* buffer, int buffer_length);
 
-    int send(void* buffer, int buffer_length, int timeout = 0);
+    int send(char* buffer, int buffer_length, int timeout = 0);
 
     void close();
 
 private:
     RxPSocket();
+
+    void init();
 
     std::string receiveFrom(struct sockaddr_in &senderInfo, socklen_t &senderLength);
 
@@ -37,6 +43,11 @@ private:
 
     std::vector<char> _in_buffer;
     std::vector<char> _out_buffer;
+
+    std::thread _in_thread;
+    std::thread _out_thread;
+    std::mutex _in_mutex;
+    std::mutex _out_mutex;
 };
 
 
