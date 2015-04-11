@@ -4,7 +4,6 @@
 
 #include <stdlib.h>
 #include <iostream>
-#include "RxP.h"
 #include <boost/thread.hpp>
 
 #include <sys/socket.h>
