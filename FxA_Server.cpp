@@ -188,14 +188,23 @@ void acceptConnection(int* connectSock, int* sock, bool* isConnecting)
 
                 char *buffer = new char[length];
                 file.read(buffer, length);
-                res = send(*connectSock, buffer, length, 0);
-                if (res == -1) {
-                    cout << "Error sending file" << endl;
-                    close(*connectSock);
-                    *isConnecting = false;
-                    return;
-                }
+				int bytessent = 0;
+				int l = length;
+				while(bytessent<length)
+				{
+		            res = send(*connectSock, buffer, l, 0);
+		            if (res == -1) {
+		                cout << "Error sending file" << endl;
+		                close(*connectSock);
+		                *isConnecting = false;
+		                return;
+		            }
+					bytessent+=res;
+					l-=res;
+					buffer+=res;
+				}
                 file.close();
+				cout << "File successfully sent" << endl;
             }
             else {
                 cout << "Error opening file probably doesn't exist" << endl;
@@ -234,7 +243,6 @@ void acceptConnection(int* connectSock, int* sock, bool* isConnecting)
                     }
                     bytesrecvd+=res;
                 }
-                cout << "Length is " << string((char*)l) << " " << res << endl;
                 int length = stoi(string((char *)l));
                 cout << "File is " << length << " bytes long" << endl;
 
@@ -252,7 +260,7 @@ void acceptConnection(int* connectSock, int* sock, bool* isConnecting)
                     }
                     bytesrecvd += res;
                 }
-                cout << "File is " << string((char *) b) << " " << length << "bytes long" << endl;
+                cout << "File is " << string((char *) b) << " " << length << " bytes long" << endl;
 
                 ofstream file("Server_"+string((char *) b), ios::binary);
 
@@ -267,9 +275,12 @@ void acceptConnection(int* connectSock, int* sock, bool* isConnecting)
                         break;
                     }
                     bytesrecvd+=res;
+					file.write(buffer, res);
+					buffer = buffer+res;
+					length-=res;
                 }
-                file.write(buffer, length);
                 file.close();
+				cout << "File successfully received" << endl;
             }
             else if(string((char*)t).compare("BadFile")==0)
             {

@@ -110,7 +110,7 @@ int main(int argc, const char* argv[])
                         break;
                     }
 
-                    cout << "Sending file name " << file.c_str() << " " << sizeof(file.c_str()) << endl;
+                    cout << "Sending file name " << file.c_str() << endl;
                     res = send(sock, file.c_str(), file.size()+1, 0);
                     if (res == -1)
                     {
@@ -128,7 +128,6 @@ int main(int argc, const char* argv[])
                         close(sock);
                         break;
                     }
-                    cout << b << endl;
                     if (string((char *) b).compare("GodFile") == 0)
                     {
                         char r[10] = {0};
@@ -138,7 +137,6 @@ int main(int argc, const char* argv[])
                             close(sock);
                             break;
                         }
-                        cout << "Length is " << string((char*)r) << " " << res << endl;
                         int length = stoi(string((char*)r));
                         cout << "File is " << length << " bytes long" << endl;
 
@@ -153,9 +151,12 @@ int main(int argc, const char* argv[])
                                 break;
                             }
                             bytesrecvd+=res;
+							fileS.write(buffer, res);
+							buffer = buffer+res;
+							length-=res;
                         }
-                        fileS.write(buffer, length);
                         fileS.close();
+						cout << "File successfully downloaded" << endl;
                     }
                     else if (string((char *) b).compare("BadFile") == 0)
                     {
@@ -218,13 +219,22 @@ int main(int argc, const char* argv[])
 
                         char *buffer = new char[length];
                         fileS.read(buffer, length);
-                        res = send(sock, buffer, length, 0);
-                        if (res == -1) {
-                            cout << "Error sending file" << endl;
-                            close(sock);
-                            break;
-                        }
+						int bytessent = 0;
+						int l = length;
+						while(bytessent<length)
+						{
+		                    res = send(sock, buffer, l, 0);
+		                    if (res == -1) {
+		                        cout << "Error sending file" << endl;
+		                        close(sock);
+		                        break;
+		                    }
+							bytessent+=res;
+							buffer+=res;
+							l-=res;
+						}
                         fileS.close();
+						cout << "File successfully uploaded" << endl;
                     }
                     else {
                         cout << "Error opening file probably doesn't exist" << endl;

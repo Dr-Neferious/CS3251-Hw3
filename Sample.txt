@@ -1,0 +1,99 @@
+-FxA_Server-
+	FxA_Server <binding port> <NetEmu IP> <NetEmu port>
+		Starting server
+		Server started
+
+	window <size>
+		Setting window size to <size>
+
+	terminate
+		Client still connected
+			Stopping Server
+			Connection shutdown
+			Got command
+			Connection lost
+			Error accepting connection
+	
+		Client not connected
+			Stopping server
+	
+
+-FxA_Client-
+	FxA_Client <binding port> <NetEmu IP> <NetEmu port>
+		No Output
+
+	connect
+		If successful
+			Connecting to server
+			Connection Successful
+
+		If unsuccessful
+			Connecting to server
+			Error connection failed
+		client exits
+
+	get <file>
+		If file exists on server and no errors occur during transmission
+			Client Output
+				Downloading "<file>"
+				Sending get
+				Sending file name <file>
+				File is <length of file in bytes> long
+				File successfully downloaded
+			Server Ouput
+				Got command get
+				File is "<file>"
+				Length is <length of file in bytes>
+				File successfully sent
+
+		If file doesn't exist on server
+			Client Output
+				Downloading "<file>"
+				Sending get
+				Sending file name <file>
+				Error file <file> doesn't exist on server
+			Server Output
+				Got command get
+				File is "<file>"
+				Error opening file probably doesn't exist
+
+	post <file>
+		If file exisit on client and no errors occur during transmission
+			Client Output
+				Uploading "<file>"
+				Length is <length of file in bytes>
+				File successfully uploaded
+			Server Output
+				Got command pst
+				File is <length of file in bytes> bytes long
+				File is <file> <length of file in bytes long> bytes long
+				File successfully uploaded
+
+		If file doesn't exist on client
+			Client Output
+				Uploading "<file>"
+				Error opening file probably doesn't exist
+			Server Output
+				Got command pst
+				File doesn't exist on client
+
+	window <size>
+		Setting window size to <size>
+
+	disconnect
+		Server still running
+			Client Ouput
+				Disconnecting
+				<Client exits>
+			Server Output
+				Connection shutdown
+				Got command
+				Connection lost
+
+		Server has stopped
+			Client Output
+				Disconnect
+
+	
+	
+
