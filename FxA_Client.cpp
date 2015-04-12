@@ -63,12 +63,8 @@ int main(int argc, const char* argv[])
     }
 
     inputThread = boost::thread(handleInput);
-    int counter = 0;
     while(true)
     {
-//        counter++;
-//        if(counter%100000000==0)
-//            cout << "Running" << endl;
         m.lock();
         switch(command)
         {
@@ -77,8 +73,9 @@ int main(int argc, const char* argv[])
                     cout << "Disconnecting" << endl;
                     (void) shutdown(sock, SHUT_RDWR);
                     close(sock);
-                    cout << "Disconnected" << endl;
                     isConnected = false;
+                    m.unlock();
+                    exit(EXIT_SUCCESS);
                 }
                 break;
             case Cmd::window:
@@ -142,16 +139,21 @@ int main(int argc, const char* argv[])
                             close(sock);
                             break;
                         }
-                        cout << "Length is" << string((char*)r) << " " << res << endl;
+                        cout << "Length is " << string((char*)r) << " " << res << endl;
                         int length = stoi(string((char*)r));
                         cout << "File is " << length << " bytes long" << endl;
 
                         char *buffer = new char[length];
-                        res = recv(sock, buffer, length, 0);
-                        if (res == -1) {
-                            cout << "Error receiving file data" << endl;
-                            close(sock);
-                            break;
+                        int bytesrecvd = 0;
+                        while(bytesrecvd<length)
+                        {
+                            res = recv(sock, buffer, length, 0);
+                            if (res == -1) {
+                                cout << "Error receiving file data" << endl;
+                                close(sock);
+                                break;
+                            }
+                            bytesrecvd+=res;
                         }
                         fileS.write(buffer, length);
                         fileS.close();
@@ -159,6 +161,7 @@ int main(int argc, const char* argv[])
                     else if (string((char *) b).compare("BadFile") == 0)
                     {
                         cout << "Error file " << file.c_str() << " doesn't exist on server" << endl;
+                        remove(("Client_"+file).c_str());
                     }
                     else
                     {
@@ -167,6 +170,73 @@ int main(int argc, const char* argv[])
                 }
                 break;
             case Cmd::post:
+                {
+                    if(!isConnected)
+                    {
+                        cout << "Not connected to server" << endl;
+                        break;
+                    }
+                    cout << "Uploading \"" << file << "\"" << endl;
+
+                    res = send(sock, "pst", 3, 0);
+                    if (res == -1)
+                    {
+                        cout << "Error sending pst" << endl;
+                        close(sock);
+                        break;
+                    }
+
+                    ifstream fileS(file, ios::binary | ios::in);
+
+                    if (fileS.is_open()) {
+                        int res = send(sock, "GodFile", 8, 0);
+                        if (res == -1) {
+                            cout << "Error sending GodFile" << endl;
+                            close(sock);
+                            break;
+                        }
+                        fileS.seekg(0, ios::end);
+                        int length = fileS.tellg();
+                        fileS.seekg(0, fileS.beg);
+                        cout << "Length is " << length << endl;
+
+                        char b[10];
+                        strcpy(b, to_string(length).c_str());
+                        res = send(sock, b, 10, 0);
+                        if (res == -1) {
+                            cout << "Error sending file length" << endl;
+                            close(sock);
+                            break;
+                        }
+
+                        res = send(sock, file.c_str(), file.size()+1, 0);
+                        if (res == -1)
+                        {
+                            cout << "Error sending filename" << endl;
+                            close(sock);
+                            break;
+                        }
+
+                        char *buffer = new char[length];
+                        fileS.read(buffer, length);
+                        res = send(sock, buffer, length, 0);
+                        if (res == -1) {
+                            cout << "Error sending file" << endl;
+                            close(sock);
+                            break;
+                        }
+                        fileS.close();
+                    }
+                    else {
+                        cout << "Error opening file probably doesn't exist" << endl;
+                        int res = send(sock, "BadFile", 7, 0);
+                        if (res == -1) {
+                            cout << "Error sending BadFile" << endl;
+                            close(sock);
+                            break;
+                        }
+                    }
+                }
                 break;
             default:
                 break;
