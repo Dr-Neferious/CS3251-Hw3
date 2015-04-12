@@ -1,6 +1,9 @@
-//
-// Created by alchaussee on 4/8/15.
-//
+/*
+ * CS 3251 - Programming Homework 2
+ * FxA Client Application using RxP
+ * Matthew Barulic
+ * Richard Chaussee
+ */
 
 #include <stdlib.h>
 #include <iostream>
@@ -9,9 +12,6 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <iostream>
 #include <fstream>
 
 using namespace std;
@@ -77,7 +77,6 @@ int main(int argc, const char* argv[])
                     m.unlock();
                     exit(EXIT_SUCCESS);
                 }
-                break;
             case Cmd::window:
                 cout << "Setting window size to " << window_size << endl;
                 break;

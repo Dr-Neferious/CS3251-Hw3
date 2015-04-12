@@ -1,6 +1,9 @@
-//
-// Created by alchaussee on 4/8/15.
-//
+/*
+ * CS 3251 - Programming Homework 2
+ * FxA Server Application using RxP
+ * Matthew Barulic
+ * Richard Chaussee
+ */
 
 #include <stdlib.h>
 #include <iostream>
@@ -9,11 +12,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <iostream>
 #include <fstream>
-#include <cstdlib>
 
 using namespace std;
 
@@ -36,7 +35,6 @@ int main(int argc, const char* argv[])
 {
     parseArgs(argc, argv);
 
-    //TCP implementation
     cout << "Starting server" << endl;
     int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
@@ -70,7 +68,6 @@ int main(int argc, const char* argv[])
 
     inputThread = boost::thread(handleInput);
     boost::thread acceptThread;
-    int counter = 0;
     int connectSock;
     bool isConnecting = false;
     while(true)
@@ -95,7 +92,6 @@ int main(int argc, const char* argv[])
                 (void) shutdown(sock, SHUT_RDWR);
                 close(sock);
                 exit(EXIT_SUCCESS);
-                break;
             case Cmd::window:
                 cout << "Setting window size to " << window_size << endl;
                 break;
