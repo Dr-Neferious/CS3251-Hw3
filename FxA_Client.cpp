@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <iostream>
+#include <fstream>
 
 using namespace std;
 
@@ -29,32 +30,141 @@ enum Cmd {none, connecting, window, post, get, disconnect};
 Cmd command = Cmd::none;
 int window_size = 1;
 string file;
+bool isConnected = false;
 
 int main(int argc, const char* argv[])
 {
     parseArgs(argc, argv);
 
+    int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+
+    if(sock==-1)
+    {
+        cout << "Error creating socket" << endl;
+        exit(EXIT_FAILURE);
+    }
+
+    sockaddr_in addr;
+    addr.sin_family = AF_INET;
+    addr.sin_port = port_to_bind;
+    int res = inet_pton(AF_INET, ip.c_str(), &addr.sin_addr);
+
+    if(res<0)
+    {
+        perror("Not a valid address family");
+        close(sock);
+        exit(EXIT_FAILURE);
+    }
+    else if (res==0)
+    {
+        perror("Invalid ip address");
+        close(sock);
+        exit(EXIT_FAILURE);
+    }
+
     inputThread = boost::thread(handleInput);
     int counter = 0;
     while(true)
     {
-        counter++;
-        if(counter%1000000000==0)
-            cout << "Running" << endl;
+//        counter++;
+//        if(counter%100000000==0)
+//            cout << "Running" << endl;
         m.lock();
         switch(command)
         {
             case Cmd::disconnect:
-                cout << "Disconnecting" << endl;
+                {
+                    cout << "Disconnecting" << endl;
+                    (void) shutdown(sock, SHUT_RDWR);
+                    close(sock);
+                    cout << "Disconnected" << endl;
+                    isConnected = false;
+                }
                 break;
             case Cmd::window:
                 cout << "Setting window size to " << window_size << endl;
                 break;
             case Cmd::connecting:
-                cout << "Connecting to server" << endl;
+                {
+                    cout << "Connecting to server" << endl;
+                    if (connect(sock, (struct sockaddr *) &addr, sizeof(addr)) == -1) {
+                        cout << "Error connection failed" << endl;
+                        close(sock);
+                        m.unlock();
+                        exit(EXIT_FAILURE);
+                    }
+                    cout << "Connection Successful" << endl;
+                    isConnected = true;
+                }
                 break;
             case Cmd::get:
-                cout << "Downloading \"" << file << "\"" << endl;
+                {
+                    if(!isConnected)
+                    {
+                        cout << "Not connected to server" << endl;
+                        break;
+                    }
+                    cout << "Downloading \"" << file << "\"" << endl;
+                    cout << "Sending get" << endl;
+                    res = send(sock, "get", 3, 0);
+                    if (res == -1)
+                    {
+                        cout << "Error sending get" << endl;
+                        close(sock);
+                        break;
+                    }
+
+                    cout << "Sending file name " << file.c_str() << " " << sizeof(file.c_str()) << endl;
+                    res = send(sock, file.c_str(), file.size()+1, 0);
+                    if (res == -1)
+                    {
+                        cout << "Error sending filename" << endl;
+                        close(sock);
+                        break;
+                    }
+                    ofstream fileS("Client_"+file, ios::binary);
+
+                    char b[8] = {0};
+                    res = recv(sock, b, 8, 0);
+                    if (res == -1)
+                    {
+                        cout << "Error receiving file status" << endl;
+                        close(sock);
+                        break;
+                    }
+                    cout << b << endl;
+                    if (string((char *) b).compare("GodFile") == 0)
+                    {
+                        char r[10] = {0};
+                        int res = recv(sock, r, 10, 0);
+                        if (res == -1) {
+                            cout << "Error receiving file length" << endl;
+                            close(sock);
+                            break;
+                        }
+                        cout << "Length is" << string((char*)r) << " " << res << endl;
+                        int length = stoi(string((char*)r));
+                        cout << "File is " << length << " bytes long" << endl;
+
+                        char *buffer = new char[length];
+                        res = recv(sock, buffer, length, 0);
+                        if (res == -1) {
+                            cout << "Error receiving file data" << endl;
+                            close(sock);
+                            break;
+                        }
+                        fileS.write(buffer, length);
+                        fileS.close();
+                    }
+                    else if (string((char *) b).compare("BadFile") == 0)
+                    {
+                        cout << "Error file " << file.c_str() << " doesn't exist on server" << endl;
+                    }
+                    else
+                    {
+                        cout << "Something happened with file status" << endl;
+                    }
+                }
                 break;
             case Cmd::post:
                 break;
@@ -81,15 +191,15 @@ void handleInput()
         }
         else if(cmd.compare("get")==0)
         {
-            cin >> file;
             m.lock();
+            cin >> file;
             command = Cmd::get;
             m.unlock();
         }
         else if(cmd.compare("post")==0)
         {
-            //Extra credit
             m.lock();
+            cin >> file;
             command = Cmd::post;
             m.unlock();
         }
