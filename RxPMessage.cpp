@@ -3,6 +3,7 @@
 //
 
 #include "RxPMessage.h"
+#include <algorithm>
 
 using namespace std;
 
@@ -16,6 +17,8 @@ RxPMessage::RxPMessage(const vector<char> &buffer) {
 }
 
 void RxPMessage::parseFromBuffer(const vector<char> &buffer) {
+  if(accumulate(buffer.begin(), buffer.end(), 0) != 0)
+    throw ParseException();
   int i = 0;
   // Unpack headers
   sequence_number = (buffer[i++] << 24) | (buffer[i++] << 16) | (buffer[i++] << 8) | buffer[i++];
@@ -58,4 +61,11 @@ vector<char> RxPMessage::toBuffer() {
   result.resize(17 + data.size());
   result.insert(result.begin() + 17, data.begin(), data.end());
   return result;
+}
+
+void RxPMessage::fillChecksum() {
+  checksum = 0;
+  vector<char> buffer = toBuffer();
+  checksum = std::accumulate(buffer.begin(), buffer.end(), 0);
+  checksum = ~checksum + 1;
 }
