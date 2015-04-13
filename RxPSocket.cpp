@@ -116,6 +116,8 @@ RxPSocket RxPSocket::connect(string ip_address, int foreign_port, int local_port
   ack_message.ACK_number = response_message.sequence_number + 1;
   ack_message.sequence_number = sock._seq_num;
   ack_message.fillChecksum();
+  vector<char> buffer = ack_message.toBuffer();
+  sock.sendTo(buffer.data(), buffer.size(), sock._destination_info, sizeof(sock._destination_info));
 
   // initialize buffers / resources
   sock.init();
