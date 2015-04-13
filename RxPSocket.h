@@ -14,8 +14,6 @@
 #include <thread>
 #include <mutex>
 
-// TODO add setter/getter for window size
-
 class RxPSocket
 {
 public:
@@ -30,6 +28,10 @@ public:
     int send(char* buffer, int buffer_length, int timeout = 0);
 
     void close();
+
+    void setWindowSize(int size);
+
+    int getWindowSize();
 
 private:
     RxPSocket();
@@ -51,6 +53,8 @@ private:
     int _destination_seq_num;
 
     int _seq_num;
+
+    int _window_size;
 
     struct sockaddr_in _destination_info;
 

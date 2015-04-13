@@ -26,6 +26,7 @@ RxPSocket::RxPSocket(RxPSocket &&sock) {
   _connected = sock._connected;
   _destination_seq_num = sock._destination_seq_num;
   _seq_num = sock._seq_num;
+  _window_size = 1;
 }
 
 RxPSocket RxPSocket::listen(int local_port) {
@@ -140,6 +141,16 @@ void RxPSocket::sendTo(const char *buffer, int length, const struct sockaddr_in 
     throw RxPException(errno);
 }
 
+void RxPSocket::setWindowSize(int size)
+{
+  _window_size = size;
+}
+
+int RxPSocket::getWindowSize()
+{
+  return _window_size;
+}
+
 /*
  * If there is space left in the in_buffer, use recvFrom to fill that space
  * Managing window size stuff
@@ -151,7 +162,34 @@ void RxPSocket::in_process() {
 }
 
 void RxPSocket::out_process() {
+  int DATASIZE = 10;
   while(_connected) {
+    if(!_out_buffer.empty())
+    {
+      //Send multiple messages
+      for(int i=0;i<_window_size;i++)
+      {
+        RxPMessage msg;
+        msg.dest_port = _destination_info.sin_port;
+        //TODO Source port?
+        //msg.src_port =
 
+        if(_out_buffer.size()<DATASIZE)
+        {
+          vector<char> buffer = vector<char>(_out_buffer.begin(), _out_buffer.end());
+          msg.data = buffer;
+        }
+        else
+        {
+          vector<char> buffer = vector<char>(_out_buffer.begin(), _out_buffer.begin() + DATASIZE);
+          msg.data = buffer;
+        }
+        //TODO Not sure which sequence number this should be
+        msg.sequence_number = _destination_seq_num++;
+
+        vector<char> buffer = msg.toBuffer();
+        sendTo(buffer.data(), buffer.size(), _destination_info, sizeof(_destination_info))
+      }
+    }
   }
 }
