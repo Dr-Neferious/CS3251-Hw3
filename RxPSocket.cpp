@@ -228,7 +228,7 @@ void RxPSocket::out_process() {
         msg.sequence_number = _destination_seq_num++;
 
         vector<char> buffer = msg.toBuffer();
-        sendTo(buffer.data(), buffer.size(), _destination_info, sizeof(_destination_info))
+        sendTo(buffer.data(), buffer.size(), _destination_info, sizeof(_destination_info));
       }
     }
   }
