@@ -7,18 +7,21 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
 #include <exception>
 #include <string>
 #include <vector>
 #include <thread>
 #include <mutex>
 
+// TODO add setter/getter for window size
+
 class RxPSocket
 {
 public:
     RxPSocket(RxPSocket &&sock);
 
-    static RxPSocket connect(int foreign_port, int local_port = -1);
+    static RxPSocket connect(std::string ip_address, int foreign_port, int local_port = -1);
 
     static RxPSocket listen(int local_port);
 
@@ -33,11 +36,21 @@ private:
 
     void init();
 
-    std::string receiveFrom(struct sockaddr_in &senderInfo, socklen_t &senderLength);
+    std::vector<char> receiveFrom(struct sockaddr_in &senderInfo, socklen_t &senderLength);
 
     void sendTo(const char *buffer, int length, const struct sockaddr_in &receiver, const socklen_t &receiverLength);
 
+    void out_process();
+
+    void in_process();
+
     int _handle;
+
+    bool _connected;
+
+    int _destination_seq_num;
+
+    int _seq_num;
 
     struct sockaddr_in _destination_info;
 
