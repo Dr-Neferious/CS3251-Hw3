@@ -183,6 +183,21 @@ vector<char> RxPSocket::receiveFrom(struct sockaddr_in &senderInfo, socklen_t &s
   return result;
 }
 
+vector<char> RxPSocket::receiveFromNonBlocking(struct sockaddr_in &senderInfo, socklen_t &senderLength) {
+  char buffer[111];
+  senderLength = sizeof(senderInfo);
+  //TODO Check errors set by recvfrom using the MSG_DONTWAIT flag http://linux.die.net/man/2/recvfrom
+  auto bytesrecvd = recvfrom(_handle, buffer, 110, MSG_DONTWAIT, (struct sockaddr *)&senderInfo, &senderLength);
+  if(bytesrecvd < 0)
+  if(errno == 11)
+    throw RxPTimeoutException();
+  else
+    throw RxPException(errno);
+  buffer[bytesrecvd] = 0;
+  vector<char> result(buffer, buffer + bytesrecvd);
+  return result;
+}
+
 void RxPSocket::sendTo(const char *buffer, int length, const struct sockaddr_in &receiver,
                        const socklen_t &receiverLength) {
   if(sendto(_handle, buffer, length, 0, (struct sockaddr *)&receiver, receiverLength) < 0)
@@ -203,20 +218,58 @@ int RxPSocket::getWindowSize()
  * If there is space left in the in_buffer, use recvFrom to fill that space
  * Managing window size stuff
  */
-void RxPSocket::in_process() {
-  while(_connected) {
+void RxPSocket::in_process()
+{
+  while(_connected)
+  {
     //TODO look into non-block recvFrom in order to prevent this from locking down the in_buffer indefinitely
+    if(_in_buffer.capacity()-_in_buffer.size() > DATASIZE)
+    {
+      RxPMessage msg;
+      struct sockaddr_in senderInfo;
+      socklen_t addrlen = sizeof(senderInfo);
+      //TODO Probably want to check that something was actually received
+      msg.parseFromBuffer(receiveFromNonBlocking(senderInfo, addrlen));
+
+      //TODO Handle message flags
+      if(msg.ACK_flag)
+      {
+
+      }
+      else if(msg.FIN_flag)
+      {
+
+      }
+      else if(msg.RST_flag)
+      {
+
+      }
+      else if(msg.SYN_flag)
+      {
+
+      }
+      else
+        copy(msg.data.begin(), msg.data.end(), _in_buffer.begin()+_in_buffer.size());
+
+      setWindowSize(_in_buffer.capacity()-_in_buffer.size()%DATASIZE);
+    }
   }
 }
 
-void RxPSocket::out_process() {
-  int DATASIZE = 10;
-  while(_connected) {
+void RxPSocket::out_process()
+{
+  while(_connected)
+  {
     if(!_out_buffer.empty())
     {
       //Send multiple messages
+      auto iter = _out_buffer.begin();
+      bool end_of_buffer = false;
       for(int i=0;i<_window_size;i++)
       {
+        if(end_of_buffer)
+          break;
+
         RxPMessage msg;
         msg.dest_port = _destination_info.sin_port;
         msg.src_port = _local_port;
@@ -225,10 +278,18 @@ void RxPSocket::out_process() {
         {
           vector<char> buffer = vector<char>(_out_buffer.begin(), _out_buffer.end());
           msg.data = buffer;
+          end_of_buffer = true;
+        }
+        else if((i+1)*DATASIZE>_out_buffer.size())
+        {
+          vector<char> buffer = vector<char>(iter, _out_buffer.end());
+          msg.data = buffer;
+          end_of_buffer = true;
         }
         else
         {
-          vector<char> buffer = vector<char>(_out_buffer.begin(), _out_buffer.begin() + DATASIZE);
+          vector<char> buffer = vector<char>(iter, iter + DATASIZE);
+          iter+=DATASIZE;
           msg.data = buffer;
         }
         //TODO Not sure which sequence number this should be

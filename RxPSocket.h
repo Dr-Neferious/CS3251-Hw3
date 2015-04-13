@@ -13,6 +13,7 @@
 #include <vector>
 #include <thread>
 #include <mutex>
+#include <condition_variable>
 
 class RxPSocket
 {
@@ -40,6 +41,8 @@ private:
 
     std::vector<char> receiveFrom(struct sockaddr_in &senderInfo, socklen_t &senderLength);
 
+    std::vector<char> receiveFromNonBlocking(struct sockaddr_in &senderInfo, socklen_t &senderLength);
+
     void sendTo(const char *buffer, int length, const struct sockaddr_in &receiver, const socklen_t &receiverLength);
 
     void out_process();
@@ -59,6 +62,8 @@ private:
     struct sockaddr_in _destination_info;
 
     int _local_port;
+
+    int DATASIZE = 10;
 
     std::vector<char> _in_buffer;
     std::vector<char> _out_buffer;
