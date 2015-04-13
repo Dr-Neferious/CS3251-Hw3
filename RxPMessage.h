@@ -17,6 +17,8 @@ public:
 
   std::vector<char> toBuffer();
 
+  void fillChecksum();
+
   int sequence_number;
   int ACK_number;
   int checksum;
@@ -28,6 +30,13 @@ public:
   bool FIN_flag;
   bool RST_flag;
   std::vector<char> data;
+
+  class ParseException : public std::exception {
+  public:
+    const char *what() const throw() override {
+      return "Checksum calculation indicated message corruption.";
+    }
+  };
 };
 
 #endif //CS3251_HW3_RXPMESSAGE_H

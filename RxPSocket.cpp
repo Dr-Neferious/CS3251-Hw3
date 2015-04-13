@@ -10,6 +10,7 @@
 #include "RxPSocket.h"
 
 #include <iostream>
+#include <arpa/inet.h>
 
 #include "RxPMessage.h"
 
@@ -45,7 +46,11 @@ RxPSocket RxPSocket::listen(int local_port) {
   struct sockaddr_in senderInfo;
   socklen_t addrlen = sizeof(senderInfo);
   do {
-    message.parseFromBuffer(sock.receiveFrom(senderInfo, addrlen));
+    try {
+      message.parseFromBuffer(sock.receiveFrom(senderInfo, addrlen));
+    } catch(const RxPMessage::ParseException& e) {
+      continue;
+    }
   } while(!message.SYN_flag);
 
   // save sender info and initiate synchronization handshake
@@ -57,10 +62,14 @@ RxPSocket RxPSocket::listen(int local_port) {
     sendmessage.ACK_flag = true;
     sendmessage.ACK_number = message.sequence_number + 1;
     sendmessage.sequence_number = sock._seq_num;
+    sendmessage.fillChecksum();
     vector<char> buffer = sendmessage.toBuffer();
     sock.sendTo(buffer.data(), buffer.size(), sock._destination_info, sizeof(sock._destination_info));
-    //TODO wait for ack
-    // NOTE no random backoff nonsense
+    try {
+      message.parseFromBuffer(sock.receiveFrom(senderInfo, addrlen));
+    } catch (const RxPMessage::ParseException &e) {
+      continue;
+    }
   } while(!(message.ACK_flag && message.ACK_number == sock._seq_num));
 
   // initialize buffers / resources
@@ -73,11 +82,40 @@ RxPSocket RxPSocket::connect(string ip_address, int foreign_port, int local_port
   RxPSocket sock;
 
   // bind to local port, if set
+  if(local_port != -1)
+  {
+    struct sockaddr_in address;
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = htonl(INADDR_ANY);
+    address.sin_port = htons(local_port);
+    if(bind(sock._handle, (struct sockaddr *)&address, sizeof(address)) < 0)
+      throw RxPException(errno);
+  }
 
   // send connection request to specified server
-
+  sock._destination_info.sin_family = AF_INET;
+  sock._destination_info.sin_port = htons(foreign_port);
+  if(inet_pton(AF_INET, ip_address.c_str(), &(sock._destination_info.sin_addr)) <= 0)
+    throw RxPException(errno);
+  RxPMessage response_message;
+  struct sockaddr_in senderInfo;
+  socklen_t addrlen = sizeof(senderInfo);
+  do {
+    RxPMessage send_message;
+    send_message.SYN_flag = true;
+    send_message.sequence_number = sock._seq_num;
+    send_message.fillChecksum();
+    vector<char> buffer = send_message.toBuffer();
+    sock.sendTo(buffer.data(), buffer.size(), sock._destination_info, sizeof(sock._destination_info));
+    response_message.parseFromBuffer(sock.receiveFrom(senderInfo, addrlen));
+  } while(!(response_message.ACK_flag && response_message.SYN_flag));
 
   // complete synchronization handshake
+  RxPMessage ack_message;
+  ack_message.ACK_flag = true;
+  ack_message.ACK_number = response_message.sequence_number + 1;
+  ack_message.sequence_number = sock._seq_num;
+  ack_message.fillChecksum();
 
   // initialize buffers / resources
   sock.init();
