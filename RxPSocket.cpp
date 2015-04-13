@@ -4,12 +4,23 @@
 
 #include <cstring>
 #include <netinet/in.h>
+#include <unistd.h>
 
 #include "RxPException.h"
 
 #include "RxPSocket.h"
 
 using namespace std;
+
+RxPSocket::RxPSocket(RxPSocket &&sock) {
+  _out_buffer = move(sock._out_buffer);
+  _in_buffer = move(sock._in_buffer);
+  _in_thread = move(sock._in_thread);
+  _out_thread = move(sock._out_thread);
+  _handle = sock._handle;
+  sock._handle = 0;
+  _destination_info = sock._destination_info;
+}
 
 RxPSocket RxPSocket::listen(int local_port) {
   RxPSocket sock;
@@ -28,8 +39,7 @@ RxPSocket RxPSocket::listen(int local_port) {
   // save sender info and initiate synchronization handshake
 
   // initialize buffers / resources
-  sock._in_buffer.reserve(100);
-  sock._out_buffer.reserve(100);
+  sock.init();
 
   return sock;
 }
@@ -44,28 +54,37 @@ RxPSocket RxPSocket::connect(int foreign_port, int local_port) {
   // complete synchronization handshake
 
   // initialize buffers / resources
-  sock._in_buffer.reserve(100);
-  sock._out_buffer.reserve(100);
+  sock.init();
 
   return sock;
 }
 
-int RxPSocket::recv(void *buffer, int buffer_length) {
-
+int RxPSocket::recv(char *buffer, int buffer_length) {
+  int numBytesToCopy = min(buffer_length, (int)_in_buffer.size());
+  copy(_in_buffer.begin(), _in_buffer.begin() + numBytesToCopy, buffer);
+  return numBytesToCopy;
 }
 
-int RxPSocket::send(void *buffer, int buffer_length, int timeout) {
-
+int RxPSocket::send(char *buffer, int buffer_length, int timeout) {
+  int numBytesToCopy = min(buffer_length, (int)(_out_buffer.capacity() - _out_buffer.size()));
+  copy(buffer, buffer + numBytesToCopy, _in_buffer.begin());
+  return numBytesToCopy;
 }
 
 void RxPSocket::close() {
-
+  ::close(_handle);
 }
 
 RxPSocket::RxPSocket() {
   _handle = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
   if(_handle < 0)
     throw RxPException(errno);
+}
+
+void RxPSocket::init() {
+  _in_buffer.reserve(100);
+  _out_buffer.reserve(100);
+
 }
 
 string RxPSocket::receiveFrom(struct sockaddr_in &senderInfo, socklen_t &senderLength) {
