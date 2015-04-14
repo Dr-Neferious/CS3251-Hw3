@@ -32,7 +32,9 @@ int main(int argc, const char* argv[])
 {
     parseArgs(argc, argv);
 
+    cout << "calling connect" << endl;
     RxPSocket sock = RxPSocket::connect(ip, port_NetEmu, port_to_bind);
+    cout << "connected" << endl;
 
     inputThread = boost::thread(handleInput);
     while(true)

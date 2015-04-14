@@ -35,6 +35,7 @@ RxPSocket RxPSocket::listen(int local_port) {
   RxPSocket sock;
 
   // bind to local port
+  cout << "bound to " << local_port << endl;
   sock._local_port = local_port;
   struct sockaddr_in address;
   address.sin_family = AF_INET;
@@ -48,6 +49,7 @@ RxPSocket RxPSocket::listen(int local_port) {
   RxPMessage message;
   struct sockaddr_in senderInfo;
   socklen_t addrlen = sizeof(senderInfo);
+  cout << "waiting for syn" << endl;
   do {
     try {
       message.parseFromBuffer(sock.receiveFrom(senderInfo, addrlen));
@@ -58,7 +60,7 @@ RxPSocket RxPSocket::listen(int local_port) {
 
   // save sender info and initiate synchronization handshake
   sock._destination_info = senderInfo;
-
+  cout << "got syn sending syn ack and waiting for ack" << endl;
   do {
     RxPMessage sendmessage;
     sendmessage.SYN_flag = true;
@@ -85,6 +87,8 @@ RxPSocket RxPSocket::connect(string ip_address, int foreign_port, int local_port
   RxPSocket sock;
 
   // bind to local port, if set
+  cout << "bound to " << local_port << endl;
+  cout << "Sending to " << foreign_port << endl;
   if(local_port != -1)
   {
     sock._local_port = local_port;
@@ -110,6 +114,7 @@ RxPSocket RxPSocket::connect(string ip_address, int foreign_port, int local_port
   RxPMessage response_message;
   struct sockaddr_in senderInfo;
   socklen_t addrlen = sizeof(senderInfo);
+  cout << "Sending syn" << endl;
   do {
     RxPMessage send_message;
     send_message.SYN_flag = true;
@@ -117,6 +122,7 @@ RxPSocket RxPSocket::connect(string ip_address, int foreign_port, int local_port
     send_message.fillChecksum();
     vector<char> buffer = send_message.toBuffer();
     sock.sendTo(buffer.data(), buffer.size(), sock._destination_info, sizeof(sock._destination_info));
+    cout << "Waiting for syn ack" << endl;
     response_message.parseFromBuffer(sock.receiveFrom(senderInfo, addrlen));
   } while(!(response_message.ACK_flag && response_message.SYN_flag));
 

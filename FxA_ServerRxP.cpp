@@ -32,7 +32,9 @@ int main(int argc, const char* argv[])
 {
     parseArgs(argc, argv);
 
+    cout << "calling listen" << endl;
     RxPSocket sock = RxPSocket::listen(port_to_bind);
+    cout << "listened" << endl;
 
     cout << "Server started" << endl;
 
