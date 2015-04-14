@@ -58,11 +58,10 @@ RxPSocket RxPSocket::listen(int local_port) {
       continue;
     }
   } while(!message.SYN_flag);
-  cout << "Got syn" << endl;
+  sock.debug_msg("got syn");
 
   // save sender info and initiate synchronization handshake
   sock._destination_info = senderInfo;
-  sock.debug_msg("got syn sending syn ack and waiting for ack");
   do {
     RxPMessage sendmessage;
     sendmessage.SYN_flag = true;
@@ -71,12 +70,11 @@ RxPSocket RxPSocket::listen(int local_port) {
     sendmessage.sequence_number = sock._seq_num;
     sendmessage.fillChecksum();
     vector<char> buffer = sendmessage.toBuffer();
-    cout << "Sending syn ack" << endl;
+    sock.debug_msg("Sending syn ack");
     sock.sendTo(buffer.data(), buffer.size(), sock._destination_info, sizeof(sock._destination_info));
     try {
-      cout << "Waiting for ack" << endl;
+      sock.debug_msg("Waiting for ack");
       message.parseFromBuffer(sock.receiveFrom(senderInfo, addrlen));
-      cout << "Got a message" << endl;
     } catch (const RxPMessage::ParseException &e) {
       sock.debug_msg(e.what());
       continue;
@@ -84,12 +82,12 @@ RxPSocket RxPSocket::listen(int local_port) {
     //Got a message (maybe last ack and if not) check if get some other message using sequence number
     if(message.sequence_number>sock._seq_num)
     {
-      cout << "Ending handshake due to higher sequence number" << endl;
+      sock.debug_msg("Ending handshake due to higher sequence number");
       break;
     }
 
   } while(!(message.ACK_flag && message.ACK_number == sock._seq_num));
-  cout << "Got ack handshake done" << endl;
+  sock.debug_msg("got ack handshake done");
   // initialize buffers / resources
   sock.init();
 
@@ -127,7 +125,6 @@ RxPSocket RxPSocket::connect(string ip_address, int foreign_port, int local_port
   RxPMessage response_message;
   struct sockaddr_in senderInfo;
   socklen_t addrlen = sizeof(senderInfo);
-  sock.debug_msg("Sending syn");
   do {
     RxPMessage send_message;
     send_message.SYN_flag = true;
@@ -135,19 +132,17 @@ RxPSocket RxPSocket::connect(string ip_address, int foreign_port, int local_port
     send_message.sequence_number = sock._seq_num;
     send_message.fillChecksum();
     vector<char> buffer = send_message.toBuffer();
-    cout << "Sending syn" << endl;
+    sock.debug_msg("Sending syn");
     sock.sendTo(buffer.data(), buffer.size(), sock._destination_info, sizeof(sock._destination_info));
     sock.debug_msg("Waiting for syn ack");
     try {
-      cout << "Waiting for syn ack" << endl;
-
       response_message.parseFromBuffer(sock.receiveFrom(senderInfo, addrlen));
     } catch(const RxPMessage::ParseException &e) {
       sock.debug_msg("Received invalid message. Resending.");
       continue;
     }
   } while(!(response_message.ACK_flag && response_message.SYN_flag));
-  cout << "Got syn ack" << endl;
+  sock.debug_msg("got syn ack");
   // complete synchronization handshake
   RxPMessage ack_message;
   ack_message.ACK_flag = true;
@@ -156,7 +151,7 @@ RxPSocket RxPSocket::connect(string ip_address, int foreign_port, int local_port
   ack_message.sequence_number = sock._seq_num;
   ack_message.fillChecksum();
   vector<char> buffer = ack_message.toBuffer();
-  cout << "Sending ack" << endl;
+  sock.debug_msg("sending ack");
   sock.sendTo(buffer.data(), buffer.size(), sock._destination_info, sizeof(sock._destination_info));
 
   // initialize buffers / resources

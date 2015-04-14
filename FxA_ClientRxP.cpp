@@ -82,32 +82,32 @@ int main(int argc, const char* argv[])
                 char *cstr = new char[file.length() + 1];
                 strcpy(cstr, file.c_str());
 
-                res = sock.send(cstr, file.size()+1);
-                if (res == -1)
+                bytesrecvd = 0;
+                while(bytesrecvd<file.size()+1)
                 {
-                    cout << "Error sending filename" << endl;
-                    sock.close();
-                    break;
+                    res = sock.send(cstr+bytesrecvd, file.size()+1-bytesrecvd);
+                    bytesrecvd+=res;
                 }
                 ofstream fileS("Client_"+file, ios::binary);
 
                 char b[8] = {0};
-                res = sock.recv(b, 8);
-                if (res == -1)
+                bytesrecvd = 0;
+                while(bytesrecvd<8)
                 {
-                    cout << "Error receiving file status" << endl;
-                    sock.close();
-                    break;
+                    res = sock.recv(b+bytesrecvd, 8-bytesrecvd);
+                    bytesrecvd+=res;
                 }
+
                 if (string((char *) b).compare("GodFile") == 0)
                 {
                     char r[10] = {0};
-                    int res = sock.recv(r, 10);
-                    if (res == -1) {
-                        cout << "Error receiving file length" << endl;
-                        sock.close();
-                        break;
+                    bytesrecvd = 0;
+                    while(bytesrecvd<10)
+                    {
+                        res = sock.recv(r+bytesrecvd, 10-bytesrecvd);
+                        bytesrecvd+=res;
                     }
+
                     int length = stoi(string((char*)r));
                     cout << "File is " << length << " bytes long" << endl;
 
@@ -150,24 +150,25 @@ int main(int argc, const char* argv[])
                 cout << "Uploading \"" << file << "\"" << endl;
 
                 char s[] = "pst";
-                int res = sock.send(s, 3);
-                if (res == -1)
+                int res = 0;
+                int bytesrecvd = 0;
+                while(bytesrecvd<3)
                 {
-                    cout << "Error sending pst" << endl;
-                    sock.close();
-                    break;
+                    res = sock.send(s+bytesrecvd, 3-bytesrecvd);
+                    bytesrecvd+=res;
                 }
 
                 ifstream fileS(file, ios::binary | ios::in);
 
                 if (fileS.is_open()) {
                     char s[] = "GodFile";
-                    int res = sock.send(s, 8);
-                    if (res == -1) {
-                        cout << "Error sending GodFile" << endl;
-                        sock.close();
-                        break;
+                    bytesrecvd = 0;
+                    while(bytesrecvd<7)
+                    {
+                        res = sock.send(s+bytesrecvd,7-bytesrecvd);
+                        bytesrecvd+=res;
                     }
+
                     fileS.seekg(0, ios::end);
                     int length = fileS.tellg();
                     fileS.seekg(0, fileS.beg);
@@ -175,22 +176,21 @@ int main(int argc, const char* argv[])
 
                     char b[10];
                     strcpy(b, to_string(length).c_str());
-                    res = sock.send(b, 10);
-                    if (res == -1) {
-                        cout << "Error sending file length" << endl;
-                        sock.close();
-                        break;
+                    bytesrecvd = 0;
+                    while(bytesrecvd<10)
+                    {
+                        res = sock.send(b+bytesrecvd, 10-bytesrecvd);
+                        bytesrecvd+=res;
                     }
 
                     char *cstr = new char[file.length() + 1];
                     strcpy(cstr, file.c_str());
 
-                    res = sock.send(cstr, file.size()+1);
-                    if (res == -1)
+                    bytesrecvd = 0;
+                    while(bytesrecvd<file.size()+1)
                     {
-                        cout << "Error sending filename" << endl;
-                        sock.close();
-                        break;
+                        res = sock.send(cstr+bytesrecvd, file.size()+1-bytesrecvd);
+                        bytesrecvd+=res;
                     }
 
                     char *buffer = new char[length];
@@ -215,11 +215,11 @@ int main(int argc, const char* argv[])
                 else {
                     cout << "Error opening file probably doesn't exist" << endl;
                     char s[] = "BadFile";
-                    int res = sock.send(s, 7);
-                    if (res == -1) {
-                        cout << "Error sending BadFile" << endl;
-                        sock.close();
-                        break;
+                    bytesrecvd = 0;
+                    while(bytesrecvd<7)
+                    {
+                        res = sock.send(s+bytesrecvd, 7-bytesrecvd);
+                        bytesrecvd+=res;
                     }
                 }
             }
