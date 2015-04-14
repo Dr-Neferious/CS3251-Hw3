@@ -19,8 +19,6 @@ public:
 
   void fillChecksum();
 
-  int calcChecksum();
-
   int sequence_number;
   int ACK_number;
   int checksum;

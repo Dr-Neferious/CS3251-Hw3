@@ -238,11 +238,6 @@ void RxPSocket::in_process()
       //TODO Probably want to check that something was actually received
       msg.parseFromBuffer(receiveFromNonBlocking(senderInfo, addrlen));
 
-      if(msg.checksum != msg.calcChecksum())
-      {
-        //TODO Either NACK or dont do anything (something will timeout) depending on what we want to do
-      }
-
       //Out of order packet
       if(prev_seq_num > msg.sequence_number)
       {
