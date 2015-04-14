@@ -254,6 +254,7 @@ void RxPSocket::in_process()
         if(msg.ACK_number == _seq_num)
         {
           _ack_received = true;
+          //TODO Remove corresponding data from _out_buffer
         }
         else if(msg.ACK_number < _seq_num)
         {
