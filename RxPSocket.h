@@ -58,6 +58,8 @@ private:
 
     struct sockaddr_in _destination_info;
 
+    int _local_port;
+
     std::vector<char> _in_buffer;
     std::vector<char> _out_buffer;
 

@@ -34,6 +34,7 @@ RxPSocket RxPSocket::listen(int local_port) {
   RxPSocket sock;
 
   // bind to local port
+  sock._local_port = local_port;
   struct sockaddr_in address;
   address.sin_family = AF_INET;
   address.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -85,12 +86,19 @@ RxPSocket RxPSocket::connect(string ip_address, int foreign_port, int local_port
   // bind to local port, if set
   if(local_port != -1)
   {
+    sock._local_port = local_port;
     struct sockaddr_in address;
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = htonl(INADDR_ANY);
     address.sin_port = htons(local_port);
     if(bind(sock._handle, (struct sockaddr *)&address, sizeof(address)) < 0)
       throw RxPException(errno);
+  } else {
+    struct sockaddr_in info;
+    socklen_t len = sizeof(info);
+    if(getsockname(sock._handle, (struct sockaddr *)&info, &len) < 0)
+      throw RxPException(errno);
+    sock._local_port = ntohs(info.sin_port);
   }
 
   // send connection request to specified server
@@ -211,8 +219,7 @@ void RxPSocket::out_process() {
       {
         RxPMessage msg;
         msg.dest_port = _destination_info.sin_port;
-        //TODO Source port?
-        //msg.src_port =
+        msg.src_port = _local_port;
 
         if(_out_buffer.size()<DATASIZE)
         {
