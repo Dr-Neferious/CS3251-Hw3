@@ -230,7 +230,7 @@ void RxPSocket::in_process()
       } catch(const RxPMessage::ParseException &e) {
         continue;
       } catch(const RxPException &e) {
-        cerr << "Socket exception occured: " << e.what());
+        cerr << "Socket exception occured: " << e.what() << endl;
       }
 
       // Ignore out of order packets
@@ -282,7 +282,6 @@ void RxPSocket::out_process()
         msg.sequence_number = _seq_num;
 
         auto numBytesToSend = min(_seq_num - _out_buffer_start_seq, DATASIZE);
-        //TODO Wont this just keep sending the same data
         msg.data = vector<char>(_out_buffer.begin() + (_seq_num - _out_buffer_start_seq), _out_buffer.begin() +  + (_seq_num - _out_buffer_start_seq) + numBytesToSend);
 
         _seq_num += numBytesToSend;

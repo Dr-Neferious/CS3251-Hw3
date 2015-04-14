@@ -6,6 +6,7 @@
 #define CS3251_HW3_RXPMESSAGE_H
 
 #include <vector>
+#include <string>
 
 class RxPMessage {
 public:
@@ -18,6 +19,8 @@ public:
   std::vector<char> toBuffer();
 
   void fillChecksum();
+
+  std::string toString();
 
   int sequence_number;
   int ACK_number;

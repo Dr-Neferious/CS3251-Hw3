@@ -71,3 +71,23 @@ void RxPMessage::fillChecksum() {
   checksum = std::accumulate(buffer.begin(), buffer.end(), 0);
   checksum = ~checksum + 1;
 }
+
+string RxPMessage::toString() {
+  string result = "Message:\n";
+
+  result += "\tSequence Number:" + to_string(sequence_number) + "\n";
+  result += "\tACK Number:" + to_string(ACK_number) + "\n";
+  result += "\tChecksum: " + to_string((int)checksum) + "\n";
+  result += "\tWindow Size: " + to_string(window_size) + "\n";
+  result += "\tDestination Port: " + to_string(dest_port) + "\n";
+  result += "\tSource Port: " + to_string(src_port) + "\n";
+  result += "\tACK Flag: " + string(ACK_flag ? "set" : "not set") + "\n";
+  result += "\tSYN Flag: " + string(SYN_flag ? "set" : "not set") + "\n";
+  result += "\tFIN Flag: " + string(FIN_flag ? "set" : "not set") + "\n";
+  result += "\tRST Flag: " + string(RST_flag ? "set" : "not set") + "\n";
+  result += "\tData: ";
+  for(auto byte : data)
+    result += to_string(byte) + ", ";
+
+  return result;
+}
