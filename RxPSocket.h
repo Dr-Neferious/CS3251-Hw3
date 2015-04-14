@@ -34,6 +34,8 @@ public:
 
     int getWindowSize();
 
+    void setVerbose(bool val);
+
 private:
     RxPSocket();
 
@@ -46,6 +48,8 @@ private:
     void out_process();
 
     void in_process();
+
+    void debug_msg(std::string msg);
 
     int _handle;
 
@@ -64,6 +68,8 @@ private:
     int _local_port;
 
     int DATASIZE = 10;
+
+    bool _verbose;
 
     std::vector<char> _in_buffer;
     std::vector<char> _out_buffer;

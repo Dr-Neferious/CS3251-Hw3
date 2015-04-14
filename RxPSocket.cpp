@@ -29,13 +29,14 @@ RxPSocket::RxPSocket(RxPSocket &&sock) {
   _destination_seq_num = sock._destination_seq_num;
   _seq_num = sock._seq_num;
   _window_size = 1;
+  _verbose = sock._verbose;
 }
 
 RxPSocket RxPSocket::listen(int local_port) {
   RxPSocket sock;
 
   // bind to local port
-  cout << "bound to " << local_port << endl;
+  sock.debug_msg("bound to " + to_string(local_port));
   sock._local_port = local_port;
   struct sockaddr_in address;
   address.sin_family = AF_INET;
@@ -49,7 +50,7 @@ RxPSocket RxPSocket::listen(int local_port) {
   RxPMessage message;
   struct sockaddr_in senderInfo;
   socklen_t addrlen = sizeof(senderInfo);
-  cout << "waiting for syn" << endl;
+  sock.debug_msg("waiting for syn");
   do {
     try {
       message.parseFromBuffer(sock.receiveFrom(senderInfo, addrlen));
@@ -60,7 +61,7 @@ RxPSocket RxPSocket::listen(int local_port) {
 
   // save sender info and initiate synchronization handshake
   sock._destination_info = senderInfo;
-  cout << "got syn sending syn ack and waiting for ack" << endl;
+  sock.debug_msg("got syn sending syn ack and waiting for ack");
   do {
     RxPMessage sendmessage;
     sendmessage.SYN_flag = true;
@@ -73,7 +74,7 @@ RxPSocket RxPSocket::listen(int local_port) {
     try {
       message.parseFromBuffer(sock.receiveFrom(senderInfo, addrlen));
     } catch (const RxPMessage::ParseException &e) {
-      cout << e.what() << endl;
+      sock.debug_msg(e.what());
       continue;
     }
   } while(!(message.ACK_flag && message.ACK_number == sock._seq_num));
@@ -88,8 +89,8 @@ RxPSocket RxPSocket::connect(string ip_address, int foreign_port, int local_port
   RxPSocket sock;
 
   // bind to local port, if set
-  cout << "bound to " << local_port << endl;
-  cout << "Sending to " << foreign_port << endl;
+  sock.debug_msg("bound to " + to_string(local_port));
+  sock.debug_msg("Sending to " + to_string(foreign_port));
   if(local_port != -1)
   {
     sock._local_port = local_port;
@@ -115,7 +116,7 @@ RxPSocket RxPSocket::connect(string ip_address, int foreign_port, int local_port
   RxPMessage response_message;
   struct sockaddr_in senderInfo;
   socklen_t addrlen = sizeof(senderInfo);
-  cout << "Sending syn" << endl;
+  sock.debug_msg("Sending syn");
   do {
     RxPMessage send_message;
     send_message.SYN_flag = true;
@@ -123,11 +124,11 @@ RxPSocket RxPSocket::connect(string ip_address, int foreign_port, int local_port
     send_message.fillChecksum();
     vector<char> buffer = send_message.toBuffer();
     sock.sendTo(buffer.data(), buffer.size(), sock._destination_info, sizeof(sock._destination_info));
-    cout << "Waiting for syn ack" << endl;
+    sock.debug_msg("Waiting for syn ack");
     try {
       response_message.parseFromBuffer(sock.receiveFrom(senderInfo, addrlen));
     } catch(const RxPMessage::ParseException &e) {
-      cout << "Received invalid message. Resending." << endl;
+      sock.debug_msg("Received invalid message. Resending.");
       continue;
     }
   } while(!(response_message.ACK_flag && response_message.SYN_flag));
@@ -172,6 +173,7 @@ RxPSocket::RxPSocket() {
   _connected = false;
   _destination_seq_num = 0;
   _seq_num = 0;
+  _verbose = true;
 }
 
 void RxPSocket::init() {
@@ -228,7 +230,7 @@ void RxPSocket::in_process()
       } catch(const RxPMessage::ParseException &e) {
         continue;
       } catch(const RxPException &e) {
-        cerr << "Socket exception occured: " << e.what() << endl;
+        cerr << "Socket exception occured: " << e.what());
       }
 
       // Ignore out of order packets
@@ -291,7 +293,7 @@ void RxPSocket::out_process()
         try {
           sendTo(buffer.data(), buffer.size(), _destination_info, sizeof(_destination_info));
         } catch(const RxPException &e) {
-          cout << "Socket exception occurred: " << e.what() << endl;
+          cerr << "Socket exception occurred: " << e.what() << endl;
           _seq_num -= numBytesToSend;
           i--;
         }
@@ -312,4 +314,9 @@ void RxPSocket::out_process()
       continue;
     }
   }
+}
+
+void RxPSocket::debug_msg(string msg) {
+  if(_verbose)
+    cout << msg << endl;
 }
