@@ -67,7 +67,7 @@ RxPSocket RxPSocket::listen(int local_port) {
     sendmessage.SYN_flag = true;
     sendmessage.ACK_flag = true;
     sendmessage.ACK_number = message.sequence_number + 1;
-    sendmessage.sequence_number = sock._seq_num;
+    sendmessage.sequence_number = sock._seq_num++;
     sendmessage.fillChecksum();
     vector<char> buffer = sendmessage.toBuffer();
     sock.debug_msg("Sending syn ack");
@@ -85,7 +85,8 @@ RxPSocket RxPSocket::listen(int local_port) {
       sock.debug_msg("Ending handshake due to higher sequence number");
       break;
     }
-
+    sock.debug_msg(message.toString());
+    cout << message.ACK_number << " " << sock._seq_num << endl;
   } while(!(message.ACK_flag && message.ACK_number == sock._seq_num));
   sock.debug_msg("got ack handshake done");
   // initialize buffers / resources
@@ -130,7 +131,7 @@ RxPSocket RxPSocket::connect(string ip_address, int foreign_port, int local_port
     RxPMessage send_message;
     send_message.SYN_flag = true;
     send_message.ACK_flag = false;
-    send_message.sequence_number = sock._seq_num;
+    send_message.sequence_number = sock._seq_num++;
     send_message.fillChecksum();
     vector<char> buffer = send_message.toBuffer();
     sock.debug_msg("Sending syn");
@@ -149,11 +150,8 @@ RxPSocket RxPSocket::connect(string ip_address, int foreign_port, int local_port
   // complete synchronization handshake
   RxPMessage ack_message;
   ack_message.ACK_flag = true;
-  ack_message.SYN_flag = false;
-  ack_message.FIN_flag = false;
-  ack_message.RST_flag = false;
   ack_message.ACK_number = response_message.sequence_number + 1;
-  ack_message.sequence_number = sock._seq_num;
+  ack_message.sequence_number = sock._seq_num++;
   ack_message.fillChecksum();
   vector<char> buffer = ack_message.toBuffer();
   sock.debug_msg("sending ack");
