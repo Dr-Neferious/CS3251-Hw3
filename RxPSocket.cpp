@@ -100,6 +100,7 @@ RxPSocket RxPSocket::connect(string ip_address, int foreign_port, int local_port
   // bind to local port, if set
   sock.debug_msg("bound to " + to_string(local_port));
   sock.debug_msg("Sending to " + to_string(foreign_port));
+
   if(local_port != -1)
   {
     sock._local_port = local_port;
@@ -138,6 +139,8 @@ RxPSocket RxPSocket::connect(string ip_address, int foreign_port, int local_port
     try {
       response_message.parseFromBuffer(sock.receiveFrom(senderInfo, addrlen));
     } catch(const RxPMessage::ParseException &e) {
+      sock.debug_msg(response_message.toString());
+      sock.debug_msg(e.what());
       sock.debug_msg("Received invalid message. Resending.");
       continue;
     }
@@ -147,6 +150,8 @@ RxPSocket RxPSocket::connect(string ip_address, int foreign_port, int local_port
   RxPMessage ack_message;
   ack_message.ACK_flag = true;
   ack_message.SYN_flag = false;
+  ack_message.FIN_flag = false;
+  ack_message.RST_flag = false;
   ack_message.ACK_number = response_message.sequence_number + 1;
   ack_message.sequence_number = sock._seq_num;
   ack_message.fillChecksum();

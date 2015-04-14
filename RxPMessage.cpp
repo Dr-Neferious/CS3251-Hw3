@@ -11,6 +11,16 @@ using namespace std;
 RxPMessage::RxPMessage()
   : data(0)
 {
+  sequence_number = 0;
+  ACK_number = 0;
+  checksum = 0;
+  window_size = 1;
+  dest_port = 0;
+  src_port = 0;
+  ACK_flag = false;
+  SYN_flag = false;
+  FIN_flag = false;
+  RST_flag = false;
 }
 
 RxPMessage::RxPMessage(const vector<char> &buffer) {
