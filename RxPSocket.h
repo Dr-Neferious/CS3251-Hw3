@@ -41,8 +41,6 @@ private:
 
     std::vector<char> receiveFrom(struct sockaddr_in &senderInfo, socklen_t &senderLength);
 
-    std::vector<char> receiveFromNonBlocking(struct sockaddr_in &senderInfo, socklen_t &senderLength);
-
     void sendTo(const char *buffer, int length, const struct sockaddr_in &receiver, const socklen_t &receiverLength);
 
     void out_process();

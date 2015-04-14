@@ -187,24 +187,6 @@ vector<char> RxPSocket::receiveFrom(struct sockaddr_in &senderInfo, socklen_t &s
   senderLength = sizeof(senderInfo);
   auto bytesrecvd = recvfrom(_handle, buffer, 110, 0, (struct sockaddr *)&senderInfo, &senderLength);
   if(bytesrecvd < 0)
-    if(errno == 11)
-      throw RxPTimeoutException();
-    else
-      throw RxPException(errno);
-  buffer[bytesrecvd] = 0;
-  vector<char> result(buffer, buffer + bytesrecvd);
-  return result;
-}
-
-vector<char> RxPSocket::receiveFromNonBlocking(struct sockaddr_in &senderInfo, socklen_t &senderLength) {
-  char buffer[111];
-  senderLength = sizeof(senderInfo);
-  //TODO Check errors set by recvfrom using the MSG_DONTWAIT flag http://linux.die.net/man/2/recvfrom
-  auto bytesrecvd = recvfrom(_handle, buffer, 110, MSG_DONTWAIT, (struct sockaddr *)&senderInfo, &senderLength);
-  if(bytesrecvd < 0)
-  if(errno == 11)
-    throw RxPTimeoutException();
-  else
     throw RxPException(errno);
   buffer[bytesrecvd] = 0;
   vector<char> result(buffer, buffer + bytesrecvd);
@@ -241,12 +223,17 @@ void RxPSocket::in_process()
       RxPMessage msg;
       struct sockaddr_in senderInfo;
       socklen_t addrlen = sizeof(senderInfo);
-      msg.parseFromBuffer(receiveFromNonBlocking(senderInfo, addrlen));
+      try {
+        msg.parseFromBuffer(receiveFrom(senderInfo, addrlen));
+      } catch(const RxPMessage::ParseException &e) {
+        continue;
+      } catch(const RxPException &e) {
+        cerr << "Socket exception occured: " << e.what() << endl;
+      }
 
-      //Out of order packet
+      // Ignore out of order packets
       if(prev_seq_num > msg.sequence_number)
       {
-        _in_buffer.clear();
         continue;
       }
 
@@ -254,37 +241,23 @@ void RxPSocket::in_process()
       if(prev_seq_num == msg.sequence_number)
         continue;
 
-      //TODO Handle message flags
       if(msg.ACK_flag)
       {
-        if(msg.ACK_number == _seq_num)
-        {
-          _ack_received = true;
-          //TODO Remove corresponding data from _out_buffer
-        }
-        else if(msg.ACK_number < _seq_num)
-        {
-
-        }
-        else
-        {
-
-        }
-        prev_seq_num = msg.sequence_number;
-        setWindowSize(_in_buffer.capacity()-_in_buffer.size()%DATASIZE);
-        //Message wont contain any data
-        continue;
+        lock_guard<mutex> lock(_out_mutex);
+        _seq_num = msg.ACK_number;
+        _out_buffer.erase(_out_buffer.begin(), _out_buffer.begin() + (_seq_num - _out_buffer_start_seq));
+        _out_buffer_start_seq = _seq_num;
+        _ack_received = true;
+      } else if(msg.FIN_flag) {
+        // TODO handle FIN messages
+      } else { // No flags means data message
+        _in_buffer.insert(_in_buffer.end(), msg.data.begin(), msg.data.end());
       }
-      else if(msg.RST_flag)
-      {
-        //TODO Reset the connection or maybe just not use this flag
-      }
-      else
-        copy(msg.data.begin(), msg.data.end(), _in_buffer.begin()+_in_buffer.size());
 
+      setWindowSize(_in_buffer.capacity()-_in_buffer.size()/DATASIZE);
       prev_seq_num = msg.sequence_number;
-      setWindowSize(_in_buffer.capacity()-_in_buffer.size()%DATASIZE);
     }
+
   }
 }
 
@@ -299,7 +272,8 @@ void RxPSocket::out_process()
         continue;
       //Send multiple messages
       auto iter = _out_buffer.begin();
-      for (int i = 0; i < _window_size && _seq_num < (_out_buffer_start_seq + _out_buffer.size()); i++) {
+      for (int i = 0; i < _window_size && _seq_num < (_out_buffer_start_seq + _out_buffer.size()); i++)
+      {
         RxPMessage msg;
         msg.dest_port = _destination_info.sin_port;
         msg.src_port = _local_port;
@@ -307,14 +281,20 @@ void RxPSocket::out_process()
 
         auto numBytesToSend = min(_seq_num - _out_buffer_start_seq, DATASIZE);
         //TODO Wont this just keep sending the same data
-        msg.data = vector<char>(_out_buffer.begin(), _out_buffer.begin() + numBytesToSend);
+        msg.data = vector<char>(_out_buffer.begin() + (_seq_num - _out_buffer_start_seq), _out_buffer.begin() +  + (_seq_num - _out_buffer_start_seq) + numBytesToSend);
 
         _seq_num += numBytesToSend;
 
         msg.fillChecksum();
 
         vector<char> buffer = msg.toBuffer();
-        sendTo(buffer.data(), buffer.size(), _destination_info, sizeof(_destination_info));
+        try {
+          sendTo(buffer.data(), buffer.size(), _destination_info, sizeof(_destination_info));
+        } catch(const RxPException &e) {
+          cout << "Socket exception occurred: " << e.what() << endl;
+          _seq_num -= numBytesToSend;
+          i--;
+        }
       }
     }
     auto start_time = system_clock::now();
