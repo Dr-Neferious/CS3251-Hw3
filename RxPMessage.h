@@ -21,7 +21,7 @@ public:
 
   int sequence_number;
   int ACK_number;
-  int checksum;
+  char checksum;
   int window_size;
   int dest_port;
   int src_port;

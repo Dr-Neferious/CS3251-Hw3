@@ -4,6 +4,7 @@
 
 #include "RxPMessage.h"
 #include <algorithm>
+#include <iostream>
 
 using namespace std;
 
@@ -25,7 +26,7 @@ void RxPMessage::parseFromBuffer(const vector<char> &buffer) {
   // Unpack headers
   sequence_number = (buffer[i++] << 24) | (buffer[i++] << 16) | (buffer[i++] << 8) | buffer[i++];
   ACK_number = (buffer[i++] << 24) | (buffer[i++] << 16) | (buffer[i++] << 8) | buffer[i++];
-  checksum = (buffer[i++] << 8) | buffer[i++];
+  checksum = buffer[i++];
   window_size = (buffer[i++] << 8) | buffer[i++];
   dest_port = (buffer[i++] << 8) | buffer[i++];
   src_port = (buffer[i++] << 8) | buffer[i++];
@@ -50,8 +51,7 @@ vector<char> RxPMessage::toBuffer() {
   result.push_back((char)((ACK_number & 0x00FF0000) >> 16));
   result.push_back((char)((ACK_number & 0x0000FF00) >>  8));
   result.push_back((char)((ACK_number & 0x000000FF)));
-  result.push_back((char)((checksum & 0x0000FF00) >> 8));
-  result.push_back((char)((checksum & 0x000000FF)));
+  result.push_back((char)(checksum));
   result.push_back((char)((window_size & 0x0000FF00) >> 8));
   result.push_back((char)((window_size & 0x000000FF)));
   result.push_back((char)((dest_port & 0x0000FF00) >> 8));

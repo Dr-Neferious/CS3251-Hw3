@@ -73,6 +73,7 @@ RxPSocket RxPSocket::listen(int local_port) {
     try {
       message.parseFromBuffer(sock.receiveFrom(senderInfo, addrlen));
     } catch (const RxPMessage::ParseException &e) {
+      cout << e.what() << endl;
       continue;
     }
   } while(!(message.ACK_flag && message.ACK_number == sock._seq_num));
@@ -123,7 +124,12 @@ RxPSocket RxPSocket::connect(string ip_address, int foreign_port, int local_port
     vector<char> buffer = send_message.toBuffer();
     sock.sendTo(buffer.data(), buffer.size(), sock._destination_info, sizeof(sock._destination_info));
     cout << "Waiting for syn ack" << endl;
-    response_message.parseFromBuffer(sock.receiveFrom(senderInfo, addrlen));
+    try {
+      response_message.parseFromBuffer(sock.receiveFrom(senderInfo, addrlen));
+    } catch(const RxPMessage::ParseException &e) {
+      cout << "Received invalid message. Resending." << endl;
+      continue;
+    }
   } while(!(response_message.ACK_flag && response_message.SYN_flag));
 
   // complete synchronization handshake
