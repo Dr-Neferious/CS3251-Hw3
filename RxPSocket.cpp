@@ -136,14 +136,14 @@ RxPSocket RxPSocket::connect(string ip_address, int foreign_port, int local_port
 }
 
 int RxPSocket::recv(char *buffer, int buffer_length) {
-  // TODO mutex
+  lock_guard<mutex> lock(_in_mutex);
   int numBytesToCopy = min(buffer_length, (int)_in_buffer.size());
   copy(_in_buffer.begin(), _in_buffer.begin() + numBytesToCopy, buffer);
   return numBytesToCopy;
 }
 
 int RxPSocket::send(char *buffer, int buffer_length, int timeout) {
-  //TODO mutex
+  lock_guard<mutex> lock(_out_mutex);
   int numBytesToCopy = min(buffer_length, (int)(_out_buffer.capacity() - _out_buffer.size()));
   copy(buffer, buffer + numBytesToCopy, _out_buffer.begin());
   return numBytesToCopy;
