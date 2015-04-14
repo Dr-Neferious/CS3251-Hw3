@@ -33,9 +33,14 @@ public:
 
   class ParseException : public std::exception {
   public:
-    const char *what() const throw() override {
-      return "Checksum calculation indicated message corruption.";
+    ParseException(const char* msg) {
+      _msg = msg;
     }
+    const char *what() const throw() override {
+      return _msg;
+    }
+  private:
+    const char* _msg;
   };
 };
 

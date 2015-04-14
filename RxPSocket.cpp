@@ -235,7 +235,6 @@ void RxPSocket::in_process()
       RxPMessage msg;
       struct sockaddr_in senderInfo;
       socklen_t addrlen = sizeof(senderInfo);
-      //TODO Probably want to check that something was actually received
       msg.parseFromBuffer(receiveFromNonBlocking(senderInfo, addrlen));
 
       //Out of order packet

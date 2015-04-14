@@ -18,7 +18,9 @@ RxPMessage::RxPMessage(const vector<char> &buffer) {
 
 void RxPMessage::parseFromBuffer(const vector<char> &buffer) {
   if(accumulate(buffer.begin(), buffer.end(), 0) != 0)
-    throw ParseException();
+    throw ParseException("Checksum calculation indicated message corruption.");
+  if(buffer.size() < 17)
+    throw ParseException("Buffer not large enough to contain a valid message.");
   int i = 0;
   // Unpack headers
   sequence_number = (buffer[i++] << 24) | (buffer[i++] << 16) | (buffer[i++] << 8) | buffer[i++];
