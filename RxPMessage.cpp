@@ -69,3 +69,11 @@ void RxPMessage::fillChecksum() {
   checksum = std::accumulate(buffer.begin(), buffer.end(), 0);
   checksum = ~checksum + 1;
 }
+
+int RxPMessage::calcChecksum()
+{
+  int checksum = 0;
+  vector<char> buffer = toBuffer();
+  checksum = std::accumulate(buffer.begin(), buffer.end(), 0);
+  return ~checksum + 1;
+}

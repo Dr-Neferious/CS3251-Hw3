@@ -221,6 +221,7 @@ int RxPSocket::getWindowSize()
  */
 void RxPSocket::in_process()
 {
+  int prev_seq_num = 0;
   while(_connected)
   {
     if(_in_buffer.capacity()-_in_buffer.size() > DATASIZE)
@@ -231,26 +232,50 @@ void RxPSocket::in_process()
       //TODO Probably want to check that something was actually received
       msg.parseFromBuffer(receiveFromNonBlocking(senderInfo, addrlen));
 
+      if(msg.checksum != msg.calcChecksum())
+      {
+        //TODO Either NACK or dont do anything (something will timeout) depending on what we want to do
+      }
+
+      //Out of order packet
+      if(prev_seq_num > msg.sequence_number)
+      {
+        _in_buffer.clear();
+        continue;
+      }
+
+      //Duplicate packet
+      if(prev_seq_num == msg.sequence_number)
+        continue;
+
       //TODO Handle message flags
       if(msg.ACK_flag)
       {
+        if(msg.ACK_number == _seq_num)
+        {
+          _ack_received = true;
+        }
+        else if(msg.ACK_number < _seq_num)
+        {
 
-      }
-      else if(msg.FIN_flag)
-      {
+        }
+        else
+        {
 
+        }
+        prev_seq_num = msg.sequence_number;
+        setWindowSize(_in_buffer.capacity()-_in_buffer.size()%DATASIZE);
+        //Message wont contain any data
+        continue;
       }
       else if(msg.RST_flag)
       {
-
-      }
-      else if(msg.SYN_flag)
-      {
-
+        //TODO Reset the connection or maybe just not use this flag
       }
       else
         copy(msg.data.begin(), msg.data.end(), _in_buffer.begin()+_in_buffer.size());
 
+      prev_seq_num = msg.sequence_number;
       setWindowSize(_in_buffer.capacity()-_in_buffer.size()%DATASIZE);
     }
   }
@@ -274,6 +299,7 @@ void RxPSocket::out_process()
         msg.sequence_number = _seq_num;
 
         auto numBytesToSend = min(_seq_num - _out_buffer_start_seq, DATASIZE);
+        //TODO Wont this just keep sending the same data
         msg.data = vector<char>(_out_buffer.begin(), _out_buffer.begin() + numBytesToSend);
 
         _seq_num += numBytesToSend;
