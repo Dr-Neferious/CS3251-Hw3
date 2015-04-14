@@ -172,8 +172,26 @@ int RxPSocket::recv(char *buffer, int buffer_length) {
 
 int RxPSocket::send(char *buffer, int buffer_length, int timeout) {
   lock_guard<mutex> lock(_out_mutex);
+
+  cout << "Send ";
+  for(int i=0;i<buffer_length;i++)
+    cout << buffer[i];
+  cout << endl;
+
+  string s = string(buffer);
   int numBytesToCopy = min(buffer_length, (int)(_out_buffer.capacity() - _out_buffer.size()));
-  copy(buffer, buffer + numBytesToCopy, _out_buffer.begin());
+  cout << "bytes to copy " << numBytesToCopy << endl;
+//  copy(s.begin(), s.begin() + numBytesToCopy, _out_buffer.begin());
+  for(int i=0;i<numBytesToCopy;i++)
+  {
+    _out_buffer.push_back(s[i]);
+  }
+
+  cout << "Out buffer: ";
+  for (vector<char>::iterator it = _out_buffer.begin(); it!=_out_buffer.end(); ++it)
+    std::cout << ' ' << *it;
+  cout << endl;
+
   return numBytesToCopy;
 }
 
@@ -197,6 +215,7 @@ void RxPSocket::init() {
   _out_buffer.reserve(10000);
   _in_thread = thread(&RxPSocket::in_process, this);
   _out_thread = thread(&RxPSocket::out_process, this);
+  _window_size = 1;
 }
 
 vector<char> RxPSocket::receiveFrom(struct sockaddr_in &senderInfo, socklen_t &senderLength) {
@@ -218,6 +237,7 @@ void RxPSocket::sendTo(const char *buffer, int length, const struct sockaddr_in 
 
 void RxPSocket::setWindowSize(int size)
 {
+  cout << "Setting window size to " << size << endl;
   _window_size = size;
 }
 
@@ -242,6 +262,7 @@ void RxPSocket::in_process()
       socklen_t addrlen = sizeof(senderInfo);
       try {
         msg.parseFromBuffer(receiveFrom(senderInfo, addrlen));
+        cout << msg.toString() << endl;
       } catch(const RxPMessage::ParseException &e) {
         continue;
       } catch(const RxPException &e) {
@@ -295,24 +316,31 @@ void RxPSocket::out_process()
       lock_guard<mutex> lock(_out_mutex);
       if(_out_buffer.empty())
         continue;
+
       //Send multiple messages
       auto iter = _out_buffer.begin();
-      for (int i = 0; i < _window_size && _seq_num < (_out_buffer_start_seq + _out_buffer.size()); i++)
+//      cout << "Window size " << _window_size << endl;
+//      && _seq_num < (_out_buffer_start_seq + _out_buffer.size()
+      for (int i = 0; i < _window_size; i++)
       {
+        cout << "looping" << endl;
         RxPMessage msg;
         msg.dest_port = _destination_info.sin_port;
         msg.src_port = _local_port;
         msg.sequence_number = _seq_num;
 
         auto numBytesToSend = min(_seq_num - _out_buffer_start_seq, DATASIZE);
-        msg.data = vector<char>(_out_buffer.begin() + (_seq_num - _out_buffer_start_seq), _out_buffer.begin() +  + (_seq_num - _out_buffer_start_seq) + numBytesToSend);
+        cout << "before" << endl;
+        msg.data = vector<char>(_out_buffer.begin() + (_seq_num - _out_buffer_start_seq), _out_buffer.begin() + (_seq_num - _out_buffer_start_seq) + numBytesToSend);
+        cout << "after" << endl;
 
         _seq_num += numBytesToSend;
 
         msg.fillChecksum();
-
+        cout << "after checksum" << endl;
         vector<char> buffer = msg.toBuffer();
         try {
+          cout << msg.toString() << endl;
           sendTo(buffer.data(), buffer.size(), _destination_info, sizeof(_destination_info));
         } catch(const RxPException &e) {
           cerr << "Socket exception occurred: " << e.what() << endl;

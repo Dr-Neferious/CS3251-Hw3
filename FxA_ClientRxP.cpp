@@ -200,11 +200,7 @@ int main(int argc, const char* argv[])
                     while(bytessent<length)
                     {
                         res = sock.send(buffer, l);
-                        if (res == -1) {
-                            cout << "Error sending file" << endl;
-                            sock.close();
-                            break;
-                        }
+
                         bytessent+=res;
                         buffer+=res;
                         l-=res;
