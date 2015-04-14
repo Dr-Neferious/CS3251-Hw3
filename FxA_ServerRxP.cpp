@@ -10,6 +10,7 @@
 #include <boost/thread.hpp>
 
 #include "RxPSocket.h"
+#include "RxPException.h"
 #include <fstream>
 
 using namespace std;
@@ -74,11 +75,23 @@ void acceptConnection(RxPSocket* sock, bool* isConnecting)
 
     while(true) {
         char buf[3] = {0};
-        int res = sock->recv(buf, 3);
-        if (res == 0)
-            cout << "Connection shutdown" << endl;
-        if (res == -1)
-            cout << "Error receiving data" << endl;
+        int bytesrecvd = 0;
+        int res = 0;
+        while(bytesrecvd < 3)
+        {
+            try
+            {
+                res = sock->recv(buf+bytesrecvd, 3-bytesrecvd);
+            }
+            catch(RxPException e)
+            {
+                cout << "Error receiving command" << endl;
+                cout << e.what() << endl;
+                *isConnecting = false;
+                return;
+            }
+            bytesrecvd+=res;
+        }
         cout << "Got command " << string((char *) buf) << endl;
 
         if (string((char *) buf).compare("get") == 0) {
@@ -100,12 +113,23 @@ void acceptConnection(RxPSocket* sock, bool* isConnecting)
             ifstream file(string((char *) b), ios::binary | ios::in);
             if (file.is_open()) {
                 char s[] = "GodFile";
-                int res = sock->send(s, 7);
-                if (res == -1) {
-                    cout << "Error sending GoodFile" << endl;
-                    *isConnecting = false;
-                    return;
+                bytesrecvd = 0;
+                while(bytesrecvd < 7)
+                {
+                    try
+                    {
+                        res = sock->send(s+bytesrecvd, 7-bytesrecvd);
+                    }
+                    catch(RxPException e)
+                    {
+                        cout << "Error sending file status" << endl;
+                        cout << e.what() << endl;
+                        *isConnecting = false;
+                        return;
+                    }
+                    bytesrecvd+=res;
                 }
+
                 file.seekg(0, ios::end);
                 int length = file.tellg();
                 file.seekg(0, file.beg);
@@ -114,11 +138,22 @@ void acceptConnection(RxPSocket* sock, bool* isConnecting)
                 char b[10];
                 strcpy(b, to_string(length).c_str());
                 cout << b << endl;
-                res = sock->send(b, 10, 0);
-                if (res == -1) {
-                    cout << "Error sending file length" << endl;
-                    *isConnecting = false;
-                    return;
+
+                bytesrecvd = 0;
+                while(bytesrecvd < 10)
+                {
+                    try
+                    {
+                        res = sock->send(b+bytesrecvd, 10-bytesrecvd);
+                    }
+                    catch(RxPException e)
+                    {
+                        cout << "Error sending file length" << endl;
+                        cout << e.what() << endl;
+                        *isConnecting = false;
+                        return;
+                    }
+                    bytesrecvd+=res;
                 }
 
                 char *buffer = new char[length];
@@ -127,12 +162,18 @@ void acceptConnection(RxPSocket* sock, bool* isConnecting)
                 int l = length;
                 while(bytessent<length)
                 {
-                    res = sock->send(buffer, l);
-                    if (res == -1) {
-                        cout << "Error sending file" << endl;
+                    try
+                    {
+                        res = sock->send(buffer+bytesrecvd, l-bytesrecvd);
+                    }
+                    catch(RxPException e)
+                    {
+                        cout << "Eror sending file data" << endl;
+                        cout << e.what() << endl;
                         *isConnecting = false;
                         return;
                     }
+
                     bytessent+=res;
                     l-=res;
                     buffer+=res;
@@ -143,22 +184,31 @@ void acceptConnection(RxPSocket* sock, bool* isConnecting)
             else {
                 cout << "Error opening file probably doesn't exist" << endl;
                 char s[] = "BadFile";
-                int res = sock->send(s, 7);
-                if (res == -1) {
-                    cout << "Error sending BadFile" << endl;
-                    *isConnecting = false;
-                    return;
+                bytesrecvd = 0;
+                while(bytesrecvd<7)
+                {
+                    res = sock->send(s+bytesrecvd, 7-bytesrecvd);
+                    bytesrecvd+=res;
                 }
             }
         }
         else if (string((char *) buf).compare("pst") == 0) {
 
             char t[7] = {0};
-            res = sock->recv(t, 7);
-            if (res == -1) {
-                cout << "Error receiving file status" << endl;
-                *isConnecting = false;
-                return;
+            bytesrecvd = 0;
+            while(bytesrecvd < 7)
+            {
+                try
+                {
+                    res = sock->recv(t+bytesrecvd, 7-bytesrecvd);
+                }
+                catch(RxPException e)
+                {
+                    cout << e.what();
+                    *isConnecting = false;
+                    return;
+                }
+                bytesrecvd+=res;
             }
 
             if(string((char*)t).compare("GodFile")==0)
@@ -167,7 +217,7 @@ void acceptConnection(RxPSocket* sock, bool* isConnecting)
                 int bytesrecvd = 0;
                 while(bytesrecvd<10)
                 {
-                    res = sock->recv(l, 10);
+                    res = sock->recv(l+bytesrecvd, 10-bytesrecvd);
                     if (res == -1) {
                         cout << "Error receiving file length" << endl;
                         *isConnecting = false;
@@ -199,7 +249,7 @@ void acceptConnection(RxPSocket* sock, bool* isConnecting)
                 bytesrecvd = 0;
                 while(bytesrecvd<length)
                 {
-                    res = sock->recv(buffer, length);
+                    res = sock->recv(buffer+bytesrecvd, length-bytesrecvd);
                     if (res == -1) {
                         cout << "Error receiving file data" << endl;
                         break;

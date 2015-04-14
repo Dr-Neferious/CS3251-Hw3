@@ -70,12 +70,12 @@ int main(int argc, const char* argv[])
                 cout << "Downloading \"" << file << "\"" << endl;
                 cout << "Sending get" << endl;
                 char s[] = "get";
-                int res = sock.send(s, 3);
-                if (res == -1)
+                int bytesrecvd = 0;
+                int res = 0;
+                while(bytesrecvd<3)
                 {
-                    cout << "Error sending get" << endl;
-                    sock.close();
-                    break;
+                    res = sock.send(s+bytesrecvd, 3-bytesrecvd);
+                    bytesrecvd+=res;
                 }
 
                 cout << "Sending file name " << file.c_str() << endl;
