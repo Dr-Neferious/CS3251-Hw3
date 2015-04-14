@@ -17,6 +17,3 @@ target_link_libraries(FxA_Server ${Boost_LIBRARIES})
 
 add_executable(FxA_Client FxA_Client.cpp RxPException.cpp RxPSocket.cpp RxPMessage.cpp)
 target_link_libraries(FxA_Client ${Boost_LIBRARIES})
-
-add_executable(Test SocketTester.cpp RxPSocket.cpp RxPException.cpp RxPMessage.cpp)
-target_link_libraries(Test ${CMAKE_THREAD_LIBS_INIT})
