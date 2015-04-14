@@ -15,6 +15,7 @@
 #include "RxPMessage.h"
 
 using namespace std;
+using namespace std::chrono;
 
 RxPSocket::RxPSocket(RxPSocket &&sock) {
   _out_buffer = move(sock._out_buffer);
@@ -222,7 +223,6 @@ void RxPSocket::in_process()
 {
   while(_connected)
   {
-    //TODO look into non-block recvFrom in order to prevent this from locking down the in_buffer indefinitely
     if(_in_buffer.capacity()-_in_buffer.size() > DATASIZE)
     {
       RxPMessage msg;
@@ -260,44 +260,43 @@ void RxPSocket::out_process()
 {
   while(_connected)
   {
-    if(!_out_buffer.empty())
-    {
+    int init_seq_num = _seq_num;
+    { // Scope for mutex lock
+      lock_guard<mutex> lock(_out_mutex);
+      if(_out_buffer.empty())
+        continue;
       //Send multiple messages
       auto iter = _out_buffer.begin();
-      bool end_of_buffer = false;
-      for(int i=0;i<_window_size;i++)
-      {
-        if(end_of_buffer)
-          break;
-
+      for (int i = 0; i < _window_size && _seq_num < (_out_buffer_start_seq + _out_buffer.size()); i++) {
         RxPMessage msg;
         msg.dest_port = _destination_info.sin_port;
         msg.src_port = _local_port;
+        msg.sequence_number = _seq_num;
 
-        if(_out_buffer.size()<DATASIZE)
-        {
-          vector<char> buffer = vector<char>(_out_buffer.begin(), _out_buffer.end());
-          msg.data = buffer;
-          end_of_buffer = true;
-        }
-        else if((i+1)*DATASIZE>_out_buffer.size())
-        {
-          vector<char> buffer = vector<char>(iter, _out_buffer.end());
-          msg.data = buffer;
-          end_of_buffer = true;
-        }
-        else
-        {
-          vector<char> buffer = vector<char>(iter, iter + DATASIZE);
-          iter+=DATASIZE;
-          msg.data = buffer;
-        }
-        //TODO Not sure which sequence number this should be
-        msg.sequence_number = _destination_seq_num++;
+        auto numBytesToSend = min(_seq_num - _out_buffer_start_seq, DATASIZE);
+        msg.data = vector<char>(_out_buffer.begin(), _out_buffer.begin() + numBytesToSend);
+
+        _seq_num += numBytesToSend;
+
+        msg.fillChecksum();
 
         vector<char> buffer = msg.toBuffer();
         sendTo(buffer.data(), buffer.size(), _destination_info, sizeof(_destination_info));
       }
+    }
+    auto start_time = system_clock::now();
+    auto timeout_duration = duration<int>(10); // 10 seconds
+    while(!_ack_received)
+    {
+      this_thread::__sleep_for(seconds(1), nanoseconds(0));
+      if( (system_clock::now() - start_time) > timeout_duration )
+        break;
+    }
+    if(!_ack_received)
+    {
+      // Ack never received so must've timed out.
+      _seq_num = init_seq_num;
+      continue;
     }
   }
 }

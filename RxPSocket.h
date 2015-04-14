@@ -59,6 +59,8 @@ private:
 
     int _window_size;
 
+    bool _ack_received;
+
     struct sockaddr_in _destination_info;
 
     int _local_port;
@@ -67,6 +69,7 @@ private:
 
     std::vector<char> _in_buffer;
     std::vector<char> _out_buffer;
+    int _out_buffer_start_seq;
 
     std::thread _in_thread;
     std::thread _out_thread;
