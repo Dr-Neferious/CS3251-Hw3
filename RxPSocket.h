@@ -61,7 +61,7 @@ private:
 
     int _window_size;
 
-    bool _ack_received;
+    bool _ack_received = false;
 
     struct sockaddr_in _destination_info;
 

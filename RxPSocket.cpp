@@ -13,6 +13,7 @@
 #include <arpa/inet.h>
 
 #include "RxPMessage.h"
+#include <algorithm>
 
 using namespace std;
 using namespace std::chrono;
@@ -158,6 +159,20 @@ RxPSocket RxPSocket::connect(string ip_address, int foreign_port, int local_port
   sock.sendTo(buffer.data(), buffer.size(), sock._destination_info, sizeof(sock._destination_info));
 
   // initialize buffers / resources
+  RxPMessage m;
+  m.sequence_number = 2;
+  m.window_size = 1;
+  m.dest_port = 16415;
+  m.src_port = 8001;
+  char t[] = "gettest.tx";
+  vector<char> d (t, t + sizeof(t)-1);
+  m.data = d;
+  m.fillChecksum();
+  buffer = m.toBuffer();
+  cout << m.toString() << endl;
+  cout << "Checksums ";
+  cout << (int)m.checksum << " " << accumulate(buffer.begin(), buffer.end(), 0) << endl;
+
   sock.init();
 
   return sock;
@@ -261,9 +276,11 @@ void RxPSocket::in_process()
       struct sockaddr_in senderInfo;
       socklen_t addrlen = sizeof(senderInfo);
       try {
+        cout << "in buffer trying to receive" << endl;
         msg.parseFromBuffer(receiveFrom(senderInfo, addrlen));
         cout << msg.toString() << endl;
       } catch(const RxPMessage::ParseException &e) {
+        cout << "in buffer " << e.what() << endl;
         continue;
       } catch(const RxPException &e) {
         cerr << "Socket exception occured: " << e.what() << endl;
@@ -323,21 +340,17 @@ void RxPSocket::out_process()
 //      && _seq_num < (_out_buffer_start_seq + _out_buffer.size()
       for (int i = 0; i < _window_size; i++)
       {
-        cout << "looping" << endl;
         RxPMessage msg;
         msg.dest_port = _destination_info.sin_port;
         msg.src_port = _local_port;
         msg.sequence_number = _seq_num;
 
         auto numBytesToSend = min(_seq_num - _out_buffer_start_seq, DATASIZE);
-        cout << "before" << endl;
-        msg.data = vector<char>(_out_buffer.begin() + (_seq_num - _out_buffer_start_seq), _out_buffer.begin() + (_seq_num - _out_buffer_start_seq) + numBytesToSend);
-        cout << "after" << endl;
+        msg.data = vector<char>(_out_buffer.begin() , _out_buffer.begin()  + numBytesToSend);
 
         _seq_num += numBytesToSend;
 
         msg.fillChecksum();
-        cout << "after checksum" << endl;
         vector<char> buffer = msg.toBuffer();
         try {
           cout << msg.toString() << endl;
