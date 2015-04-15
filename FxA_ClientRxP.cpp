@@ -92,11 +92,13 @@ int main(int argc, const char* argv[])
 
                 char b[8] = {0};
                 bytesrecvd = 0;
-                while(bytesrecvd<8)
+                while(bytesrecvd<7)
                 {
-                    res = sock.recv(b+bytesrecvd, 8-bytesrecvd);
+                    res = sock.recv(b+bytesrecvd, 7-bytesrecvd);
                     bytesrecvd+=res;
                 }
+
+                cout << "status: " << string((char*)b) << endl;
 
                 if (string((char *) b).compare("GodFile") == 0)
                 {

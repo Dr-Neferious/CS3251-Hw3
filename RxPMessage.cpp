@@ -72,7 +72,6 @@ vector<char> RxPMessage::toBuffer() {
   // Pack data
   result.resize(17 + data.size());
   copy(data.begin(), data.end(), result.begin() + 17);
-//  result.insert(result.begin() + 17, data.begin(), data.end());
   return result;
 }
 

@@ -110,7 +110,7 @@ void acceptConnection(RxPSocket* sock, bool* isConnecting)
                 file.seekg(0, file.beg);
                 cout << "Length is " << length << endl;
 
-                char b[10];
+                char b[10] = {0};
                 strcpy(b, to_string(length).c_str());
                 cout << b << endl;
 
@@ -128,11 +128,8 @@ void acceptConnection(RxPSocket* sock, bool* isConnecting)
                 int l = length;
                 while(bytessent<length)
                 {
-                    res = sock->send(buffer+bytesrecvd, l-bytesrecvd);
-
-                    bytessent+=res;
-                    l-=res;
-                    buffer+=res;
+                    res = sock->send(buffer+bytessent, length-bytessent);
+                    bytessent += res;
                 }
                 file.close();
                 cout << "File successfully sent" << endl;
