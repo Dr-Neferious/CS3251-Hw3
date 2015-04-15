@@ -89,7 +89,7 @@ void acceptConnection(RxPSocket* sock, bool* isConnecting)
             char b[128] = {0};
             fill(begin(b), end(b), 1);
             int bytesrecvd = 0;
-            while (bytesrecvd < 128 && find(begin(b), end(b), 0) == end(b)) {
+            while (bytesrecvd == 0 || ( bytesrecvd < 128 && find(begin(b), end(b), 0) == end(b) ) ) {
                 res = sock->recv(b + bytesrecvd, 128 - bytesrecvd);
                 bytesrecvd += res;
             }
