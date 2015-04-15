@@ -101,7 +101,7 @@ void acceptConnection(RxPSocket* sock, bool* isConnecting)
                 bytesrecvd = 0;
                 while(bytesrecvd < 7)
                 {
-                        res = sock->send(s+bytesrecvd, 7-bytesrecvd);
+                    res = sock->send(s+bytesrecvd, 7-bytesrecvd);
                     bytesrecvd+=res;
                 }
 
@@ -117,6 +117,7 @@ void acceptConnection(RxPSocket* sock, bool* isConnecting)
                 bytesrecvd = 0;
                 while(bytesrecvd < 10)
                 {
+                    cout << bytesrecvd << " bytes sent " << (10-bytesrecvd) << endl;
                     res = sock->send(b+bytesrecvd, 10-bytesrecvd);
                     bytesrecvd+=res;
                 }

@@ -258,7 +258,7 @@ void RxPSocket::in_process()
       socklen_t addrlen = sizeof(senderInfo);
       try {
         msg.parseFromBuffer(receiveFrom(senderInfo, addrlen));
-        cout << msg.toString() << endl;
+        cout << "Incoming " << msg.toString() << endl;
       } catch(const RxPMessage::ParseException &e) {
         cerr << "in buffer " << e.what() << endl;
         continue;
@@ -273,14 +273,18 @@ void RxPSocket::in_process()
 //        continue;
 
       //Duplicate packet
-      if(prev_seq_num == msg.sequence_number)
-        continue;
+//      if(prev_seq_num == msg.sequence_number)
+//        continue;
 
       if(msg.ACK_flag)
       {
+        debug_msg("Waiting for lock");
         lock_guard<mutex> lock(_out_mutex);
+        debug_msg("Lock aquired");
         _seq_num = msg.ACK_number;
+        debug_msg("Got ack for sequence number " + to_string(msg.ACK_number));
         cout << "erasing " << _seq_num - _out_buffer_start_seq << " elements in out buffer" << endl;
+        cout << "but there are only " << _out_buffer.size() << " elements in out buffer" << endl;
         _out_buffer.erase(_out_buffer.begin(), _out_buffer.begin() + (_seq_num - _out_buffer_start_seq));
         _out_buffer_start_seq = _seq_num;
         _ack_received = true;
@@ -290,11 +294,13 @@ void RxPSocket::in_process()
         _in_buffer.insert(_in_buffer.end(), msg.data.begin(), msg.data.end());
 
         RxPMessage ackMsg;
-        ackMsg.ACK_number = msg.sequence_number;
+        ackMsg.ACK_number = msg.sequence_number + msg.data.size();
         ackMsg.ACK_flag  = true;
         ackMsg.fillChecksum();
 
-        vector<char> buffer = msg.toBuffer();
+        debug_msg("Sending ACK:\n" + ackMsg.toString());
+
+        vector<char> buffer = ackMsg.toBuffer();
         sendTo(buffer.data(), buffer.size(), _destination_info, sizeof(_destination_info));
       }
 
@@ -325,12 +331,9 @@ void RxPSocket::out_process()
         msg.sequence_number = _seq_num;
 
         auto numBytesToSend = min((int)(_out_buffer.size() - (_seq_num - _out_buffer_start_seq)), DATASIZE);
-        cout << "_out_buffer.size() " << _out_buffer.size() << endl;
-        cout << "_seq_num " << _seq_num << endl;
-        cout << "_out_buffer_start_seq " << _out_buffer_start_seq << endl;
-        cout << "DATASIZE " << DATASIZE << endl;
-        cout << "num btes send " << numBytesToSend << endl;
+        cout << "numBytesToSend " << numBytesToSend << endl;
         msg.data.insert(msg.data.end(), _out_buffer.begin(), _out_buffer.begin()  + numBytesToSend);
+        cout << "data size " << msg.data.size() << endl;
 
         _seq_num += numBytesToSend;
 
@@ -351,6 +354,7 @@ void RxPSocket::out_process()
     while(!_ack_received)
     {
       this_thread::__sleep_for(seconds(1), nanoseconds(0));
+      debug_msg("Checking for ack");
       if( (system_clock::now() - start_time) > timeout_duration )
         break;
     }

@@ -23,3 +23,9 @@ target_link_libraries(FxA_ServerRxP ${Boost_LIBRARIES})
 
 add_executable(FxA_ClientRxP FxA_ClientRxP.cpp RxPException.cpp RxPSocket.cpp RxPMessage.cpp)
 target_link_libraries(FxA_ClientRxP ${Boost_LIBRARIES})
+
+add_executable(server_test server_test.cpp RxPException.cpp RxPSocket.cpp RxPMessage.cpp)
+target_link_libraries(server_test ${Boost_LIBRARIES})
+
+add_executable(client_test client_test.cpp RxPException.cpp RxPSocket.cpp RxPMessage.cpp)
+target_link_libraries(client_test ${Boost_LIBRARIES})

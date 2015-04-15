@@ -71,7 +71,8 @@ vector<char> RxPMessage::toBuffer() {
   result.push_back((char)((ACK_flag << 7) | (SYN_flag << 6) | (FIN_flag << 5) | (RST_flag << 4)));
   // Pack data
   result.resize(17 + data.size());
-  result.insert(result.begin() + 17, data.begin(), data.end());
+  copy(data.begin(), data.end(), result.begin() + 17);
+//  result.insert(result.begin() + 17, data.begin(), data.end());
   return result;
 }
 
