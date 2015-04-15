@@ -241,8 +241,9 @@ void RxPSocket::sendTo(const char *buffer, int length, const struct sockaddr_in 
 
 void RxPSocket::setWindowSize(int size)
 {
-  cout << "Setting window size to " << size << endl;
+//  cout << "Setting window size to " << size << endl;
 //  _window_size = size;
+  _window_size = 1;
 }
 
 int RxPSocket::getWindowSize()
@@ -337,7 +338,7 @@ void RxPSocket::out_process()
 
         auto numBytesToSend = min((int)(_out_buffer.size() - (_seq_num - _out_buffer_start_seq)), DATASIZE);
         msg.data.resize(numBytesToSend);
-//        msg.data.insert(msg.data.end(), _out_buffer.begin() + (_seq_num - _out_buffer_start_seq), _out_buffer.begin() + (_seq_num - _out_buffer_start_seq) + numBytesToSend);
+        msg.data.insert(msg.data.end(), _out_buffer.begin(), _out_buffer.begin()  + numBytesToSend);
 
         _seq_num += numBytesToSend;
 
