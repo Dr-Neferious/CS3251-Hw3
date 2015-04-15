@@ -257,6 +257,7 @@ int RxPSocket::getWindowSize()
 void RxPSocket::in_process()
 {
   int prev_seq_num = 0;
+  int prev_data_len = 0;
   while(_connected)
   {
     if(_in_buffer.capacity()-_in_buffer.size() > DATASIZE)
@@ -275,10 +276,10 @@ void RxPSocket::in_process()
       }
 
       // Ignore out of order packets
-      if(prev_seq_num > msg.sequence_number)
-      {
+      if(msg.sequence_number > prev_seq_num + prev_data_len)
         continue;
-      }
+      if(prev_seq_num > msg.sequence_number)
+        continue;
 
       //Duplicate packet
       if(prev_seq_num == msg.sequence_number)
@@ -308,6 +309,7 @@ void RxPSocket::in_process()
 
       setWindowSize(min((int)(_in_buffer.capacity()-_in_buffer.size()/DATASIZE), 10));
       prev_seq_num = msg.sequence_number;
+      prev_data_len = msg.data.size();
     }
 
   }
