@@ -28,7 +28,7 @@ RxPMessage::RxPMessage(const vector<char> &buffer) {
 }
 
 void RxPMessage::parseFromBuffer(const vector<char> &buffer) {
-  if(accumulate(buffer.begin(), buffer.end(), 0) != 0)
+  if((char)accumulate(buffer.begin(), buffer.end(), (char)0) != 0)
     throw ParseException("Checksum calculation indicated message corruption.");
   if(buffer.size() < 17)
     throw ParseException("Buffer not large enough to contain a valid message.");
@@ -78,7 +78,7 @@ vector<char> RxPMessage::toBuffer() {
 void RxPMessage::fillChecksum() {
   checksum = 0;
   vector<char> buffer = toBuffer();
-  checksum = std::accumulate(buffer.begin(), buffer.end(), 0);
+  checksum = std::accumulate(buffer.begin(), buffer.end(), (char)0);
   checksum = ~checksum + 1;
 }
 
