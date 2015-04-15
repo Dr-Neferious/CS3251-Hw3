@@ -159,20 +159,6 @@ RxPSocket RxPSocket::connect(string ip_address, int foreign_port, int local_port
   sock.sendTo(buffer.data(), buffer.size(), sock._destination_info, sizeof(sock._destination_info));
 
   // initialize buffers / resources
-  RxPMessage m;
-  m.sequence_number = 2;
-  m.window_size = 1;
-  m.dest_port = 16415;
-  m.src_port = 8001;
-  char t[] = "gettest.tx";
-  vector<char> d (t, t + sizeof(t)-1);
-  m.data = d;
-  m.fillChecksum();
-  buffer = m.toBuffer();
-  cout << m.toString() << endl;
-  cout << "Checksums ";
-  cout << (int)m.checksum << " " << accumulate(buffer.begin(), buffer.end(), 0) << endl;
-
   sock.init();
 
   return sock;
@@ -181,7 +167,17 @@ RxPSocket RxPSocket::connect(string ip_address, int foreign_port, int local_port
 int RxPSocket::recv(char *buffer, int buffer_length) {
   lock_guard<mutex> lock(_in_mutex);
   int numBytesToCopy = min(buffer_length, (int)_in_buffer.size());
+
+  if(numBytesToCopy>0)
+  {
+    cout << "In buffer contains ";
+    for(int i=0;i<_in_buffer.size();i++)
+      cout << _in_buffer[i];
+    cout << endl;
+  }
+
   copy(_in_buffer.begin(), _in_buffer.begin() + numBytesToCopy, buffer);
+  _in_buffer.erase(_in_buffer.begin(), _in_buffer.begin() + numBytesToCopy);
   return numBytesToCopy;
 }
 
@@ -253,7 +249,7 @@ void RxPSocket::sendTo(const char *buffer, int length, const struct sockaddr_in 
 void RxPSocket::setWindowSize(int size)
 {
   cout << "Setting window size to " << size << endl;
-  _window_size = size;
+//  _window_size = size;
 }
 
 int RxPSocket::getWindowSize()
@@ -276,9 +272,8 @@ void RxPSocket::in_process()
       struct sockaddr_in senderInfo;
       socklen_t addrlen = sizeof(senderInfo);
       try {
-        cout << "in buffer trying to receive" << endl;
         msg.parseFromBuffer(receiveFrom(senderInfo, addrlen));
-        cout << msg.toString() << endl;
+//        cout << msg.toString() << endl;
       } catch(const RxPMessage::ParseException &e) {
         cout << "in buffer " << e.what() << endl;
         continue;
@@ -300,6 +295,7 @@ void RxPSocket::in_process()
       {
         lock_guard<mutex> lock(_out_mutex);
         _seq_num = msg.ACK_number;
+        cout << "erasing " << _seq_num - _out_buffer_start_seq << " elements in out buffer" << endl;
         _out_buffer.erase(_out_buffer.begin(), _out_buffer.begin() + (_seq_num - _out_buffer_start_seq));
         _out_buffer_start_seq = _seq_num;
         _ack_received = true;
@@ -353,7 +349,7 @@ void RxPSocket::out_process()
         msg.fillChecksum();
         vector<char> buffer = msg.toBuffer();
         try {
-          cout << msg.toString() << endl;
+//          cout << msg.toString() << endl;
           sendTo(buffer.data(), buffer.size(), _destination_info, sizeof(_destination_info));
         } catch(const RxPException &e) {
           cerr << "Socket exception occurred: " << e.what() << endl;
@@ -376,6 +372,7 @@ void RxPSocket::out_process()
       _seq_num = init_seq_num;
       continue;
     }
+    _ack_received = false;
   }
 }
 

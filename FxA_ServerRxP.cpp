@@ -42,10 +42,11 @@ int main(int argc, const char* argv[])
     inputThread = boost::thread(handleInput);
     boost::thread acceptThread;
     bool isConnecting = false;
+    acceptThread = boost::thread(acceptConnection, &sock, &isConnecting);
+
     while(true)
     {
-        if(!isConnecting)
-            acceptThread = boost::thread(acceptConnection, &sock, &isConnecting);
+//        if(!isConnecting)
 
         m.lock();
         switch(command)
@@ -90,12 +91,6 @@ void acceptConnection(RxPSocket* sock, bool* isConnecting)
             int bytesrecvd = 0;
             while (bytesrecvd < 128 && find(begin(b), end(b), 0) == end(b)) {
                 res = sock->recv(b + bytesrecvd, 128 - bytesrecvd);
-                if (res == -1) {
-                    cerr << "Error receiving file name " << string((char *) b) << endl;
-                    cerr << strerror(errno) << endl;
-                    *isConnecting = false;
-                    return;
-                }
                 bytesrecvd += res;
             }
             cout << "File is \"" << string((char *) b) << "\"" << endl;
