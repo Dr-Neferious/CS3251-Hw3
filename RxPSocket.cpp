@@ -88,7 +88,6 @@ RxPSocket RxPSocket::listen(int local_port) {
       break;
     }
     sock.debug_msg(message.toString());
-    cout << message.ACK_number << " " << sock._seq_num << endl;
   } while(!(message.ACK_flag && message.ACK_number == sock._seq_num));
   sock.debug_msg("got ack handshake done");
   // initialize buffers / resources
@@ -168,17 +167,12 @@ RxPSocket RxPSocket::connect(string ip_address, int foreign_port, int local_port
 int RxPSocket::recv(char *buffer, int buffer_length) {
   lock_guard<mutex> lock(_in_mutex);
   int numBytesToCopy = min(buffer_length, (int)_in_buffer.size());
-
-  if(numBytesToCopy>0)
-  {
-    cout << "In buffer contains ";
-    for(int i=0;i<_in_buffer.size();i++)
-      cout << _in_buffer[i];
-    cout << endl;
-  }
-
   copy(_in_buffer.begin(), _in_buffer.begin() + numBytesToCopy, buffer);
   _in_buffer.erase(_in_buffer.begin(), _in_buffer.begin() + numBytesToCopy);
+  if(_in_buffer.size() > 0)
+    cout << _in_buffer.size() << " bytes in in_buffer" << endl;
+  if(numBytesToCopy > 0)
+    cout << "recv-ing " << buffer << endl;
   return numBytesToCopy;
 }
 
@@ -186,14 +180,10 @@ int RxPSocket::send(char *buffer, int buffer_length, int timeout) {
   lock_guard<mutex> lock(_out_mutex);
 
   int numBytesToCopy = min(buffer_length, (int)(_out_buffer.capacity() - _out_buffer.size()));
-  cout << "bytes to copy " << numBytesToCopy << endl;
+
+  cout << "sending " << numBytesToCopy << "  bytes" << endl;
 
   _out_buffer.insert(_out_buffer.end(), buffer, buffer + numBytesToCopy);
-
-  cout << "Out buffer: ";
-  for (vector<char>::iterator it = _out_buffer.begin(); it!=_out_buffer.end(); ++it)
-    std::cout << ' ' << *it;
-  cout << endl;
 
   return numBytesToCopy;
 }
@@ -219,7 +209,7 @@ void RxPSocket::init() {
   _in_thread = thread(&RxPSocket::in_process, this);
   _out_thread = thread(&RxPSocket::out_process, this);
   _window_size = 1;
-  _out_buffer_start_seq = 0;
+  _out_buffer_start_seq = _seq_num;
 }
 
 vector<char> RxPSocket::receiveFrom(struct sockaddr_in &senderInfo, socklen_t &senderLength) {
@@ -268,19 +258,19 @@ void RxPSocket::in_process()
       socklen_t addrlen = sizeof(senderInfo);
       try {
         msg.parseFromBuffer(receiveFrom(senderInfo, addrlen));
-//        cout << msg.toString() << endl;
+        cout << msg.toString() << endl;
       } catch(const RxPMessage::ParseException &e) {
-        cout << "in buffer " << e.what() << endl;
+        cerr << "in buffer " << e.what() << endl;
         continue;
       } catch(const RxPException &e) {
         cerr << "Socket exception occured: " << e.what() << endl;
       }
 
       // Ignore out of order packets
-      if(msg.sequence_number > prev_seq_num + prev_data_len)
-        continue;
-      if(prev_seq_num > msg.sequence_number)
-        continue;
+//      if(msg.sequence_number > prev_seq_num + prev_data_len)
+//        continue;
+//      if(prev_seq_num > msg.sequence_number)
+//        continue;
 
       //Duplicate packet
       if(prev_seq_num == msg.sequence_number)
@@ -334,10 +324,12 @@ void RxPSocket::out_process()
         msg.src_port = _local_port;
         msg.sequence_number = _seq_num;
 
-        cout << _out_buffer.size() << "\t" << _seq_num << "\t" << _out_buffer_start_seq << "\t" << DATASIZE << endl;
-
         auto numBytesToSend = min((int)(_out_buffer.size() - (_seq_num - _out_buffer_start_seq)), DATASIZE);
-        msg.data.resize(numBytesToSend);
+        cout << "_out_buffer.size() " << _out_buffer.size() << endl;
+        cout << "_seq_num " << _seq_num << endl;
+        cout << "_out_buffer_start_seq " << _out_buffer_start_seq << endl;
+        cout << "DATASIZE " << DATASIZE << endl;
+        cout << "num btes send " << numBytesToSend << endl;
         msg.data.insert(msg.data.end(), _out_buffer.begin(), _out_buffer.begin()  + numBytesToSend);
 
         _seq_num += numBytesToSend;
