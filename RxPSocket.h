@@ -67,7 +67,7 @@ private:
 
     int _local_port;
 
-    int DATASIZE = 10;
+    int DATASIZE = 50;
 
     bool _verbose;
 
